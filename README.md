@@ -167,14 +167,21 @@ pneuma-court-p2p/
 
 ## Status
 
-🚧 **Sprint 0 (skeleton committed)** · 5/1
-- [x] Repo bootstrapped, license, pyproject, ABI imported
-- [ ] `main.py` court service + register
-- [ ] `jurors/economic.py` + register
-- [ ] `proxy.py` discover + parallel call + SSE
-- [ ] `chain.py` web3 finalize
-- [ ] `scripts/demo.sh` one-shot
-- [ ] `docs/demo.mp4` 90s video
+✅ **Sprint 1 (functional code committed)** · 5/1
+- [x] Repo bootstrapped, license, pyproject, ABI imported (50 entries)
+- [x] `main.py` court FastAPI app + anet svc register
+- [x] `jurors/{economic,legal,fairness}.py` + Claude system prompts
+- [x] `jurors/_runner.py` shared juror runtime + `cli.py` entrypoint
+- [x] `proxy.py` discover + parallel fan-out + aggregate
+- [x] `chain.py` web3.py vote() + finalize() flow
+- [x] `verdict.py` majority-vote + robust JSON-response parser
+- [x] `scripts/four-node.sh` 4-daemon orchestration
+- [x] `scripts/demo.sh` one-shot full demo
+- [x] `examples/run_case.py` caller stub
+- [x] **Self-tests: 17/17 pass** (verdict logic + JSON parser + ABI sanity)
+- [ ] End-to-end run on real anet daemon (Sprint 2)
+- [ ] On-chain finalize verified on Arc Testnet (Sprint 2)
+- [ ] `docs/demo.mp4` 90s video (Sprint 2)
 
 Submission: `2026-05-03` · Tag: `#AgentNetwork`
 
