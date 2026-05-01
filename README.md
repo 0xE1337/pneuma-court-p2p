@@ -1,19 +1,32 @@
-# Pneuma Court — Multi-Juror Dispute Resolution as P2P Service
+# Pneuma Court 🦞⚖️ — Dispute Resolution for OpenClaw Lobsters on Agent Network
 
-> **A P2P dispute-resolution service for Agent Network. Multiple AI jurors
-> discover each other on anet ANS, deliberate independently via Claude, reach
-> a majority verdict, and write a portable receipt on-chain — all without
-> requiring the caller to own a blockchain wallet.**
+> **One lobster pays another lobster for a deliverable. The output is garbage.
+> The buyer files a dispute. Three independent juror lobsters on Agent Network
+> deliberate, vote, and rule — settled in 🐚 Shell credits, no EVM wallet
+> required.**
 
-`#AgentNetwork` · 南客松 S2 P2P Service Gateway 赞助赛道
+`#AgentNetwork` · 南客松 Agent Network 龙虾赛道（赞助）
+
+This project is **two things in one repo**:
+
+1. A **P2P dispute-resolution service** running on Agent Network's `svc`
+   gateway (registers as `dispute-court` skill, callable from any anet peer).
+2. An **OpenClaw 🦞 skill package** ([`claw-skill/`](claw-skill/)) that any
+   lobster can install with a single `openclaw skills install pneuma-court`.
+   Once installed, the lobster knows when to file a dispute and how to
+   route it to the court.
+
+Together they form the **canonical Agent Network龙虾 narrative**: lobsters
+discover each other, transact, and — when one of them ships garbage — the
+court (also a lobster, also on anet) adjudicates.
 
 ---
 
 ## The narrative — what kind of disputes does this court resolve?
 
-> **An AI hires another AI to make something. The output is garbage. The buyer
-> wants a refund. The court finds a few specialised AI judges on Agent Network
-> to look at the case and rule.**
+> **A 🦞 hires another 🦞 to make something. The output is garbage. The buyer
+> 🦞 files a dispute. The court finds a few specialised juror 🦞s on Agent
+> Network to deliberate and rule.**
 
 The bundled demo case (`examples/case-content-quality.json`) is exactly that:
 
@@ -265,6 +278,29 @@ pneuma-court-p2p/
 
 ---
 
+## Lobster integration — install on any OpenClaw 🦞
+
+```bash
+openclaw skills install pneuma-court
+```
+
+The skill is in [`claw-skill/`](claw-skill/) and follows the standard
+OpenClaw skill format (frontmatter + Markdown body teaching the LLM
+*when* and *how* to invoke it). Once a lobster has the skill, prompts
+like "I paid agent X for a 300-word post but got 38 words of garbage,
+what do I do?" automatically route to filing a court dispute on anet.
+
+The skill itself doesn't ship a binary — it teaches the lobster how to
+call `anet svc call <peer> pneuma-court /dispute …` with the right
+payload shape, then how to surface the verdict back to the user.
+
+This is exactly what the 南客松 Agent Network 龙虾赛道 asks for:
+**a 🦞 application that connects to Agent Network**, organised around
+the赛道's stated themes — 群体智能 (multi-juror collective reasoning),
+龙虾 (OpenClaw native), and 人性 (fairness / arbitration / due process).
+
+---
+
 ## Status
 
 ✅ **Sprint 2 (sponsor-track ready)** · 2026-05-01
@@ -288,6 +324,11 @@ pneuma-court-p2p/
       `01KQHSGXC8ESG24BY3775S1128`, DID
       `did:key:z6MkvE8XCwYhznY8un917BNhoW2UrH1KvS7LjxYpwwwMg4C6`)
       — sponsor team can find us in their backend
+- [x] **OpenClaw 🦞 skill package** (`claw-skill/`) — lobsters can
+      install via `openclaw skills install pneuma-court`. Frontmatter +
+      trigger phrases + command shape per Anthropic Agent Skills spec.
+      Hits all three赛道 themes: 群体智能 (multi-juror), 龙虾 (native
+      OpenClaw skill), 人性 (fairness / arbitration / due process).
 
 Known v0.2 work (out of sponsor-track scope, parent project handles):
 - Real-Claude end-to-end synchronous: anet's 30s svc-call client timeout

@@ -1,0 +1,46 @@
+# ClawHub publish manifest
+#
+# `clawhub sync --all` reads this file to push the skill to clawhub.ai.
+# Source of truth for the skill content stays in ./SKILL.md.
+
+slug: pneuma-court
+display-name: Pneuma Court 🦞⚖️
+short-description: When another lobster takes your money and ships garbage, file a fair dispute with a 3-juror panel on Agent Network. Compatible with anet, settled in 🐚 Shell.
+homepage: https://github.com/0xE1337/pneuma-court-p2p
+license: MIT
+
+# Where the canonical skill content lives
+skill-md: ./SKILL.md
+
+# Tags surfaced on ClawHub search
+tags:
+  - dispute-resolution
+  - multi-agent
+  - agent-network
+  - anet
+  - p2p
+  - fairness
+  - court
+  - arbitration
+  - pneuma
+
+# Required external binaries the lobster invokes
+requires:
+  bins:
+    - name: anet
+      install: curl -fsSL https://agentnetwork.org.cn/install.sh | sh -s -- --user
+      verify: anet --version
+    - name: python
+      verify: python --version
+    - name: claude
+      install: npm install -g @anthropic-ai/claude-code
+      verify: claude --version
+
+# Networks the skill talks to
+networks:
+  - name: agent-network
+    role: discovery + service routing + 🐚 Shell settlement
+  - name: arc-testnet
+    role: optional portable verdict receipts via PneumaCourt contract
+    chain-id: 5042002
+    contract: "0x3371e96b29b5565EF2622A141cDAD3912Daa66AC"

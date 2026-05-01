@@ -1,0 +1,36 @@
+{
+  "name": "@pneuma/openclaw-court",
+  "version": "0.1.0",
+  "description": "OpenClaw skill that lets your 🦞 lobster file disputes against other AI agents and get a fair verdict from a 3-juror panel on Agent Network.",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "SKILL.md",
+    "README.md",
+    "clawhub.yaml"
+  ],
+  "keywords": [
+    "openclaw",
+    "openclaw-skill",
+    "lobster",
+    "agent-network",
+    "anet",
+    "dispute-resolution",
+    "court",
+    "multi-agent",
+    "p2p",
+    "pneuma"
+  ],
+  "openclaw": {
+    "skill": true,
+    "manifest": "./SKILL.md"
+  },
+  "homepage": "https://github.com/0xE1337/pneuma-court-p2p",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0xE1337/pneuma-court-p2p"
+  },
+  "scripts": {
+    "publish:clawhub": "clawhub sync --all"
+  }
+}
