@@ -1,0 +1,11 @@
+{
+  "caseId": 7,
+  "category": "economic",
+  "callId": 142,
+  "evidence": "Skill provider promised a 200-word summary within 60 seconds for $0.05 USDC. Caller paid via x402, request was accepted (HTTP 200) but the response stream timed out at 18 seconds with only 47 words returned. Provider claims 'partial delivery is non-refundable per service agreement clause 4.2'. Caller demands full refund + 0.5x penalty per the Pneuma SLA template.",
+  "claims": {
+    "plaintiff": "Full refund (0.05 USDC) + SLA penalty (0.025 USDC) for non-delivery.",
+    "defendant": "Partial output delivered in good faith; clause 4.2 of provider TOS waives refunds on partial completion."
+  },
+  "expected_jurors": ["economic-juror", "legal-juror", "fairness-juror"]
+}

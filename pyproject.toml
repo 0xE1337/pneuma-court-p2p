@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pneuma-court-p2p"
+version = "0.1.0"
+description = "Multi-juror dispute resolution as a P2P service on Agent Network. Verdicts finalized on Arc Testnet via the PneumaCourt contract."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "0xE"}]
+keywords = ["agent-network", "anet", "p2p", "court", "dispute-resolution", "pneuma", "x402", "ethereum", "arc-testnet"]
+dependencies = [
+    "anet>=1.1.0",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "httpx>=0.25",
+    "anthropic>=0.34",
+    "web3>=6.20",
+    "eth-account>=0.11",
+    "python-dotenv>=1.0",
+    "pydantic>=2.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+court-main = "court_agent.main:cli"
+court-juror = "court_agent.jurors.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
