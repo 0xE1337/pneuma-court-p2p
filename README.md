@@ -57,9 +57,12 @@ cd pneuma-court-p2p
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
 
-# 3 — Configure
+# 3 — Configure (.env.example has defaults for everything except the wallet)
 cp .env.example .env
-# Fill in: ANTHROPIC_API_KEY, ARC_RPC_URL, COURT_FINALIZER_PRIVATE_KEY
+# Fill in: COURT_FINALIZER_PRIVATE_KEY  (a wallet with JUROR_ROLE on PneumaCourt
+#                                        and ~10 testnet USDC for gas)
+# NOTE: NO ANTHROPIC_API_KEY required. Jurors spawn the local `claude` CLI
+#       which uses your existing Claude Code auth (OAuth keychain).
 
 # 4 — One-shot demo: spawn 4 daemons + main court + 3 jurors + run a test case
 bash scripts/demo.sh

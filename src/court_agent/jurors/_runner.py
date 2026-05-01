@@ -2,16 +2,29 @@
 
 Each juror flavor (economic / legal / fairness) reuses this runner with a
 domain-specific system prompt.
+
+NOTE on the model: jurors do NOT call the Anthropic API directly. They spawn
+the local `claude` CLI in non-interactive mode (`claude -p`), which reuses
+whatever auth Claude Code is already configured with (OAuth keychain, etc.).
+This means:
+  • No ANTHROPIC_API_KEY environment variable required
+  • No per-token billing — the operator pays via their existing Claude
+    Code subscription
+  • Each juror's reasoning is produced by the same local Claude install
+    that the operator is already using interactively
+
+The trade-off is ~5–10s of CLI startup per call. For a 3-juror court that
+fans out in parallel, total deliberation latency stays under 15s.
 """
 
 from __future__ import annotations
 
 import os
+import subprocess
 import threading
 from typing import Optional
 
 import uvicorn
-from anthropic import Anthropic
 from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 
@@ -37,6 +50,32 @@ Do not include any text outside the JSON object.
 """
 
 
+def _ask_claude_cli(system_prompt: str, user_msg: str, *, timeout: float = 90.0) -> str:
+    """Spawn `claude -p` and pipe the user message via stdin. Return stdout.
+
+    Uses the local Claude Code install's existing auth (OAuth via keychain by
+    default). No ANTHROPIC_API_KEY needed.
+    """
+    cmd = [
+        "claude",
+        "-p",
+        "--append-system-prompt", system_prompt,
+    ]
+    proc = subprocess.run(
+        cmd,
+        input=user_msg,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"claude CLI exited {proc.returncode}: "
+            f"{(proc.stderr or proc.stdout)[:300]}"
+        )
+    return proc.stdout
+
+
 def run_juror(
     *,
     category: str,
@@ -46,9 +85,7 @@ def run_juror(
 ) -> None:
     name = f"{category}-juror"
     app = FastAPI(title=name)
-    client = Anthropic()
-    model = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
-    max_tokens = int(os.environ.get("CLAUDE_MAX_TOKENS", "512"))
+    timeout = float(os.environ.get("CLAUDE_CLI_TIMEOUT", "90"))
 
     @app.get("/health")
     def health() -> dict[str, object]:
@@ -61,7 +98,7 @@ def run_juror(
             "version": "0.1.0",
             "skill": name,
             "category": category,
-            "model": model,
+            "model": "local-claude-cli",
         }
 
     @app.post("/vote")
@@ -74,14 +111,10 @@ def run_juror(
         print(f"[{name}] caller={x_agent_did} caseId={case_id!r}", flush=True)
 
         try:
-            msg = client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                system=system_prompt,
-                messages=[{"role": "user", "content": _build_user_message(case)}],
-            )
-            text = "".join(
-                block.text for block in msg.content if getattr(block, "type", None) == "text"
+            text = _ask_claude_cli(
+                system_prompt,
+                _build_user_message(case),
+                timeout=timeout,
             )
             verdict, reasoning = parse_juror_response(text)
         except Exception as e:  # noqa: BLE001

@@ -12,15 +12,17 @@ license = {text = "MIT"}
 authors = [{name = "0xE"}]
 keywords = ["agent-network", "anet", "p2p", "court", "dispute-resolution", "pneuma", "x402", "ethereum", "arc-testnet"]
 dependencies = [
-    # NOTE on anet: the starter kit's `from anet.svc import SvcClient` is
-    # not a published PyPI package. We vendor an equivalent subprocess-
-    # backed wrapper at court_agent/_anet_client.py. Runtime requirement
-    # is the `anet` CLI binary on $PATH (install via
-    # `curl -fsSL https://agentnetwork.org.cn/install.sh | sh -s -- --user`).
+    # Runtime CLI requirements (must be on $PATH, not pip-installable):
+    #   • `anet`   — install: curl -fsSL https://agentnetwork.org.cn/install.sh | sh -s -- --user
+    #     (we vendor a subprocess SvcClient at court_agent/_anet_client.py
+    #      because `pip install anet>=1.1` resolves to an unrelated package)
+    #   • `claude` — Claude Code CLI for juror reasoning. We spawn it with
+    #     `claude -p` so jurors reuse the operator's existing Claude Code
+    #     auth (OAuth keychain). NO ANTHROPIC_API_KEY needed. Install:
+    #        npm install -g @anthropic-ai/claude-code
     "fastapi>=0.110",
     "uvicorn>=0.29",
     "httpx>=0.25",
-    "anthropic>=0.34",
     "web3>=6.20",
     "eth-account>=0.11",
     "python-dotenv>=1.0",

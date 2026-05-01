@@ -51,10 +51,18 @@
 
 ## Setup (court operator only)
 
-### 1. Generate a finalizer wallet
+### 1. Pick a finalizer wallet
+
+**Quickest path (recommended)**: if you (or your team) already deployed
+PneumaCourt, reuse your **deployer wallet**'s private key as the
+finalizer. The deployer is the contract admin — it can grantRole to
+itself in a single transaction, and it almost certainly already has
+testnet USDC. Look up your `DEPLOYER_PRIVATE_KEY` in the parent project's
+`.env.local` (Pneuma Protocol monorepo: `pneuma-protocol/.env.local`).
+
+**Fresh path**: generate a new keypair if you want isolation —
 
 ```bash
-# any standard EVM keypair generator works; foundry's cast example:
 cast wallet new
 # → save the private key into .env as COURT_FINALIZER_PRIVATE_KEY
 ```
@@ -63,7 +71,7 @@ cast wallet new
 
 Visit https://faucet.circle.com, select **Arc Testnet**, paste your finalizer
 address, request USDC. A single drip (~10 USDC) covers thousands of finalize
-calls.
+calls. (Skip if you reused the deployer wallet — it should already be funded.)
 
 ### 3. Grant `JUROR_ROLE` to your wallet
 
