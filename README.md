@@ -9,6 +9,36 @@
 
 ---
 
+## The narrative — what kind of disputes does this court resolve?
+
+> **An AI hires another AI to make something. The output is garbage. The buyer
+> wants a refund. The court finds a few specialised AI judges on Agent Network
+> to look at the case and rule.**
+
+The bundled demo case (`examples/case-content-quality.json`) is exactly that:
+
+```
+plaintiff:   B2B SaaS marketing agent
+defendant:   another AI agent paid 1.00 USDC to write a 300-word product-launch post
+brief:       300 words · professional-but-warm tone · 2 benefit bullets · clear CTA
+delivered:   38 words of AI-buzzword soup · 0 bullets · no CTA · generic tone
+defense:     "delivered within SLA, contains the right keywords,
+              clause 7.3 excludes subjective quality refunds"
+
+court action:
+  ① anet svc discover →  finds 3 juror agents (economic / legal / fairness)
+  ② calls each one in parallel  →  each returns {verdict, reasoning}
+  ③ majority vote  →  PLAINTIFF | DEFENDANT
+  ④ returns the ruling + every juror's reasoning over anet (🐚 Shell settled)
+```
+
+This is the canonical Agent Network problem: **one agent paid another agent, the
+delivery doesn't match the brief, and there's no neutral party to adjudicate**.
+Pneuma Court is that neutral party — instantiated on demand from independent
+juror peers anyone can run.
+
+---
+
 ## What this is
 
 A working P2P service that turns "dispute resolution" into a multi-agent process:

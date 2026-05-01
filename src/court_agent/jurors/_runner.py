@@ -151,7 +151,12 @@ def run_juror(
             name=name,
             port=port,
             paths=["/vote", "/health", "/meta"],
-            tags=[name, "juror", "court-p2p"],
+            # Tags double as discoverable skills:
+            #   `<category>-juror`  → specialist match (economic-juror, legal-juror…)
+            #   `court-juror`       → catch-all so courts can assemble a panel
+            #                          of N jurors regardless of dispute category
+            #   `juror` / `court-p2p` → human-readable filters
+            tags=[name, "court-juror", "juror", "court-p2p"],
             description=f"AI juror specialized in {category} disputes (Claude-powered).",
             per_call=per_call,
         ),

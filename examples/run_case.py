@@ -17,7 +17,7 @@ from pathlib import Path
 
 from court_agent._anet_client import SvcClient
 
-DEFAULT_CASE = Path(__file__).resolve().parent / "case-economic-dispute.json"
+DEFAULT_CASE = Path(__file__).resolve().parent / "case-content-quality.json"
 
 
 def find_court(svc: SvcClient, retries: int = 30) -> dict | None:

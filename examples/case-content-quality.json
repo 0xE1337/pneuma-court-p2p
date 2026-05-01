@@ -1,0 +1,18 @@
+{
+  "caseId": 11,
+  "category": "content-quality",
+  "callId": 203,
+  "title": "AI marketing agent disputes garbage copy delivered by another AI",
+
+  "story": "An autonomous B2B SaaS marketing agent paid another AI agent 1.00 USDC to write a product-launch post. The output is short, generic, and missing every structural element the brief asked for. The court convenes a panel of 3 specialised juror agents on Agent Network to rule.",
+
+  "evidence": "BRIEF: 'Write a 300-word product-launch post for a B2B SaaS that does AI-powered customer onboarding. Tone: professional but warm. Include 2 bullet-point benefits and a clear CTA.' || DELIVERED (38 words): 'AI is changing the world! Customer onboarding is important. Companies should use software. Use our SaaS today! With AI, everything gets better. Smart companies pick smart tools. Don't miss out on the future.' || METRICS: 87.3% word-count shortfall (38/300), 0/2 required bullet points, no CTA, generic AI-buzzword content with no B2B-SaaS or onboarding specifics, tone neither professional nor warm. || PRICE: 1.00 USDC, delivered in 12 seconds (within 60s SLA timer).",
+
+  "claims": {
+    "plaintiff": "Full refund of 1.00 USDC. Delivered output fails on every measurable term: 87% short on length, zero bullets, no CTA, no topic specificity. This is non-performance, not a subjective quality complaint.",
+    "defendant": "Output was delivered within the 60-second SLA window (12s) and contains the topic keywords ('AI', 'customer onboarding', 'SaaS'). Service-agreement clause 7.3 excludes refunds for subjective quality complaints. Plaintiff should have vetted the brief."
+  },
+
+  "expected_jurors": ["economic-juror", "legal-juror", "fairness-juror"],
+  "_note": "Caller does NOT need an EVM wallet — deliberation runs over anet, settled in 🐚 Shell."
+}

@@ -1,24 +1,28 @@
 #!/usr/bin/env bash
-# Spawn four anet daemons on the same laptop, all bootstrapped off daemon-1
+# Spawn five anet daemons on the same laptop, all bootstrapped off daemon-1
 # so they form a single mesh. Adapted from anet starter kit
-# examples/03-multi-agent-pipeline/scripts/four-node.sh.
+# examples/03-multi-agent-pipeline/scripts/four-node.sh, expanded to 5 daemons
+# because anet svc discover dedupes by peer_id — each juror needs its own
+# daemon to be discoverable as a distinct panel member.
 #
 # Layout for pneuma-court:
 #   /tmp/anet-p2p-court-u1   API=:13921  P2P=:14021    pneuma-court (main)
 #   /tmp/anet-p2p-court-u2   API=:13922  P2P=:14022    economic-juror
-#   /tmp/anet-p2p-court-u3   API=:13923  P2P=:14023    legal-juror + fairness-juror
-#   /tmp/anet-p2p-court-u4   API=:13924  P2P=:14024    caller (run_case.py)
+#   /tmp/anet-p2p-court-u3   API=:13923  P2P=:14023    legal-juror
+#   /tmp/anet-p2p-court-u4   API=:13924  P2P=:14024    fairness-juror
+#   /tmp/anet-p2p-court-u5   API=:13925  P2P=:14025    caller (run_case.py)
 
 set -euo pipefail
 ANET="${ANET:-anet}"
 
-API=(13921 13922 13923 13924)
-P2P=(14021 14022 14023 14024)
+API=(13921 13922 13923 13924 13925)
+P2P=(14021 14022 14023 14024 14025)
 HOMES=(
   /tmp/anet-p2p-court-u1
   /tmp/anet-p2p-court-u2
   /tmp/anet-p2p-court-u3
   /tmp/anet-p2p-court-u4
+  /tmp/anet-p2p-court-u5
 )
 
 green() { printf "\033[32m✓\033[0m %s\n" "$*"; }
@@ -65,15 +69,16 @@ cmd_start() {
     | python3 -c "import sys,json;print(json.load(sys.stdin)['peer_id'])")
   green "u1 alive  PEER=$PEER1  (court)"
 
-  for i in 1 2 3; do
+  for i in 1 2 3 4; do
     BOOT="\"/ip4/127.0.0.1/tcp/${P2P[0]}/p2p/$PEER1\""
     write_config "${HOMES[$i]}" "${API[$i]}" "${P2P[$i]}" "$BOOT"
     HOME="${HOMES[$i]}" "$ANET" daemon > "${HOMES[$i]}/daemon.log" 2>&1 &
     wait_alive "${API[$i]}" || { red "daemon-$((i+1)) failed"; tail "${HOMES[$i]}/daemon.log"; exit 1; }
     case "$i" in
       1) green "u2 alive on :${API[$i]}  (economic-juror)" ;;
-      2) green "u3 alive on :${API[$i]}  (legal-juror + fairness-juror)" ;;
-      3) green "u4 alive on :${API[$i]}  (caller)" ;;
+      2) green "u3 alive on :${API[$i]}  (legal-juror)" ;;
+      3) green "u4 alive on :${API[$i]}  (fairness-juror)" ;;
+      4) green "u5 alive on :${API[$i]}  (caller)" ;;
     esac
   done
 }

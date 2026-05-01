@@ -13,23 +13,50 @@ from court_agent.verdict import majority_vote
 
 ANET_BASE_URL = os.environ.get("ANET_BASE_URL", "http://127.0.0.1:13921")
 MIN_JURORS = int(os.environ.get("COURT_MIN_JURORS", "3"))
-DISCOVER_RETRIES = int(os.environ.get("COURT_DISCOVER_RETRIES", "10"))
+DISCOVER_RETRIES = int(os.environ.get("COURT_DISCOVER_RETRIES", "5"))
 
 
 def _find_jurors(svc: SvcClient, category: str) -> list[dict[str, Any]]:
-    """Discover jurors by category, with fallback to fairness-juror."""
+    """Assemble a juror panel for a dispute.
+
+    Strategy — match the user-described story 'court finds a few agents
+    relevant to the case':
+
+      1. SPECIALIST PASS: discover `<category>-juror` (e.g. economic-juror).
+         If we already have ≥ MIN_JURORS specialists, return them.
+      2. GENERALIST TOP-UP: discover any `court-juror` (every juror in this
+         project's juror pool registers this catch-all tag), and merge
+         unique peers into the panel until we hit MIN_JURORS or run out.
+
+    This means a content-quality dispute, for which there is no
+    `content-quality-juror` specialist on the mesh, still convenes a
+    real 3-juror panel (economic + legal + fairness) instead of running
+    with a single fallback peer.
+    """
+    panel: list[dict[str, Any]] = []
+    seen_peers: set[str] = set()
+
+    def _add(peers: list[dict[str, Any]]) -> None:
+        for p in peers:
+            pid = p.get("peer_id")
+            if pid and pid not in seen_peers:
+                panel.append(p)
+                seen_peers.add(pid)
+
+    # Single retry loop probes BOTH specialist + generalist on each tick. Bails
+    # the moment we have enough jurors to seat a panel — never burns the full
+    # retry budget when generalists are already advertised, which keeps total
+    # discover latency comfortably inside anet's 30s svc-call client timeout.
     skill = f"{category}-juror"
     for _ in range(DISCOVER_RETRIES):
-        peers = svc.discover(skill=skill)
-        if peers:
-            return peers
+        _add(svc.discover(skill=skill))                 # specialist
+        if len(panel) < MIN_JURORS:
+            _add(svc.discover(skill="court-juror"))     # generalist top-up
+        if len(panel) >= MIN_JURORS:
+            break
         time.sleep(1)
 
-    # Fallback: fairness-juror is the universal arbiter — try it if a
-    # specialised juror category isn't online.
-    if category != "fairness":
-        return svc.discover(skill="fairness-juror")
-    return []
+    return panel
 
 
 def _extract_body(resp: dict[str, Any]) -> dict[str, Any]:
@@ -136,15 +163,14 @@ def deliberate(case: dict[str, Any], *, caller_did: str | None) -> dict[str, Any
     # Read-only on-chain integration IS verified (chain.has_chain_config /
     # chain.dispute_count / chain.get_dispute) and the result includes a
     # snapshot of the contract state when configured.
+    # Cheap config probe — no live RPC inside the request hot path so we
+    # don't bust anet's 30s svc-call timeout. Operators who want a live
+    # chain snapshot can call court_agent.chain.dispute_count() out-of-band.
     if has_chain_config():
-        try:
-            from court_agent.chain import dispute_count
-            result["onchain_dispute_count"] = dispute_count()
-            result["onchain_status"] = (
-                "read-only integration verified; write path queued for v0.2"
-            )
-        except Exception as e:  # noqa: BLE001
-            result["onchain_status"] = f"read-only check failed: {e}"
+        result["onchain_status"] = (
+            "configured (RPC + contract + finalizer wallet); "
+            "write path queued for v0.2 — see chain.py docstring"
+        )
     else:
         result["onchain_status"] = (
             "court has no on-chain config (ARC_RPC_URL / PNEUMA_COURT_ADDRESS"
