@@ -104,13 +104,36 @@ def deliberate(case: dict[str, Any], *, caller_did: str | None) -> dict[str, Any
         result["jurors"] = votes
         result["verdict"] = majority_vote(v["verdict"] for v in votes)
 
-    if case_id is None or os.environ.get("COURT_SKIP_ONCHAIN") == "1":
+    # On-chain finalize is OPT-IN, not the default path.
+    #
+    # Two gating conditions, BOTH must be true to attempt on-chain write:
+    #   1. caller explicitly requested it via payload: want_onchain_proof=true
+    #   2. court operator hasn't disabled it via env: COURT_ENABLE_ONCHAIN=1
+    #
+    # gas is paid by the court operator (whoever runs this service), not the
+    # caller — anet callers are not assumed to hold an EVM wallet. The court
+    # recovers gas cost via higher 🐚 Shell pricing for on-chain-proof requests.
+    #
+    # This keeps the default path (anet-only, 🐚 Shell settlement) unchanged
+    # for the 99% of users who don't need a cross-network proof.
+    want_proof = bool(case.get("want_onchain_proof"))
+    onchain_enabled = os.environ.get("COURT_ENABLE_ONCHAIN", "0") == "1"
+
+    if not (want_proof and onchain_enabled and case_id is not None):
+        result["onchain_skipped_reason"] = (
+            "not requested" if not want_proof
+            else "court operator disabled on-chain"
+            if not onchain_enabled
+            else "no caseId"
+        )
         return result
 
     try:
         result["tx_hash"] = finalize_dispute(int(case_id), result["verdict"])
     except Exception as e:  # noqa: BLE001
-        # Demo continues even if RPC is flaky — surfaces error in result.
+        # On-chain failure is non-fatal: deliberation result already returns,
+        # caller sees the error in the response and can retry or accept the
+        # off-chain-only ruling.
         result["error"] = f"on-chain finalize failed: {e}"
 
     return result

@@ -1,8 +1,9 @@
 # Pneuma Court — Multi-Juror Dispute Resolution as P2P Service
 
-> **Multiple AI jurors discover each other on Agent Network, vote on disputes,
-> majority verdict gets written on-chain.** Built on top of the Pneuma Protocol's
-> `PneumaCourt` contract deployed at Arc Testnet.
+> **A P2P dispute-resolution service for Agent Network. Multiple AI jurors
+> discover each other on anet ANS, deliberate independently via Claude, and
+> reach a majority verdict — settled entirely in 🐚 Shell credits. No
+> blockchain wallet required.**
 
 `#AgentNetwork` · 南客松 S2 P2P Service Gateway 赞助赛道
 
@@ -15,8 +16,8 @@ A working P2P service that turns "dispute resolution" into a multi-agent process
 1. **Court Agent** receives a dispute (caseId + evidence + category) over anet
 2. **Discovers** N juror agents in the mesh by skill — `economic-juror`, `legal-juror`, `fairness-juror`, etc.
 3. **Calls each juror** in parallel; each juror is a Claude-powered agent with a domain-specific prompt
-4. **Aggregates verdicts** via majority vote, streams the deliberation back to the caller as SSE
-5. **Finalizes on-chain** — calls `PneumaCourt.finalize(disputeId, verdict)` on Arc Testnet, producing a verifiable on-chain ruling
+4. **Aggregates verdicts** via majority vote
+5. **Returns the ruling** to the caller — full verdict + per-juror reasoning, all settled in 🐚 Shell
 
 ```
 caller (any anet node)
@@ -26,8 +27,9 @@ caller (any anet node)
 │  ① svc.discover(skill=f"{category}-juror")  →  N peers         │
 │  ② parallel anet calls →  each juror returns {verdict, reason} │
 │  ③ majority vote                                                │
-│  ④ web3.py → PneumaCourt.finalize() → tx hash                  │
-│  ⑤ SSE stream back: every juror's vote + final tx              │
+│  ④ return {verdict, jurors[], tx_hash?}                        │
+│     · default: settled in 🐚 Shell, no wallet needed            │
+│     · opt-in: on-chain proof (see "On-chain bonus" below)       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -76,26 +78,47 @@ bash scripts/demo.sh
 |---|---|
 | `anet svc register` | Court + each juror registers a service with a skill tag and cost model |
 | `anet svc discover --skill` | Court discovers jurors at runtime — no hard-coded peer IDs |
-| `server-stream` mode | SSE: every juror's vote streams back as it lands |
 | `cost_model.per_call` | Caller pays court 20🐚, court pays each juror 5🐚, anet wallet handles settlement |
 | `X-Agent-DID` header | We log which DID asked for the verdict (audit trail) |
 | `svc_call_log` | Every call across 4 daemons writes audit rows; full chain reconstructable |
 
-This is `examples/03-multi-agent-pipeline/` from the anet starter kit, repurposed for adversarial multi-perspective evaluation.
+This is `examples/03-multi-agent-pipeline/` from the anet starter kit, repurposed for adversarial multi-perspective evaluation. **The default deliberation path runs entirely inside anet — no blockchain involved.**
 
 ---
 
-## What lives on-chain (Pneuma Protocol bridge)
+## On-chain bonus (opt-in)
 
-The `PneumaCourt` contract on Arc Testnet @ [`0x3371e96b29b5565EF2622A141cDAD3912Daa66AC`](#) handles:
+The default path is anet-only. If a caller wants a **portable, cross-network
+proof** of the verdict (e.g. they're going to cite this ruling on a different
+platform), they can opt in:
 
-- `fileDispute(callId, evidence)` — opens a case, locks slash-stake
-- `vote(disputeId, verdict)` — recorded juror vote (we use this for the finalizer's on-chain ruling)
-- `finalize(disputeId)` — closes the case, triggers slash/refund
+```jsonc
+// case payload — extra fields
+{
+  "caseId": 7,
+  "category": "economic",
+  "evidence": "...",
+  "want_onchain_proof": true,            // ← opt-in flag
+  "beneficiary_address": "0xabc..."      // ← who the attestation is for
+}
+```
 
-After the off-chain multi-juror deliberation produces a verdict, this project calls `finalize()` so the ruling is publicly verifiable. **The on-chain dispute lifecycle is unchanged** — we add an off-chain mesh-deliberation layer on top.
+When this flag is set AND the court operator has enabled on-chain support
+(`COURT_ENABLE_ONCHAIN=1` in `.env`), the court additionally writes the
+verdict to the [`PneumaCourt`](docs/onchain-bonus.md) contract on Arc Testnet.
 
-For details on the contract and the Arc deployment, see [docs/pneuma-court-on-arc.md](docs/pneuma-court-on-arc.md).
+**Gas economics**:
+- **Caller does NOT need an EVM wallet.** Settlement is in 🐚 Shell.
+- Gas is paid by the **court operator's** wallet (`COURT_FINALIZER_PRIVATE_KEY`).
+- The court recovers cost by charging more 🐚 Shell for proof-included calls
+  (e.g. 50🐚 instead of 20🐚 — fully at the operator's discretion).
+
+If on-chain fails (RPC down, wallet underfunded), the verdict is still
+returned over anet — the off-chain ruling is the source of truth, the
+on-chain write is a **portable receipt** of it.
+
+See [docs/onchain-bonus.md](docs/onchain-bonus.md) for setup details and the
+contract address on Arc Testnet.
 
 ---
 
