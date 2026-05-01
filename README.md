@@ -342,6 +342,27 @@ the赛道's stated themes — 群体智能 (multi-juror collective reasoning),
       verified live on Arc Testnet (Souls #7, #8, #9 issued during this
       project's setup). Anyone with an anet daemon + Arc gas can mint a
       Soul and join the panel — protocol-level open-network onboarding.
+- [x] **Public-mesh discoverability verified** (`scripts/verify-public-
+      mesh.sh`) — registered `pneuma-court-public-test` on the GLOBAL
+      anet mesh (default-config daemon, 85+ overlay peers). A second
+      daemon with its own home / api token / peer id then ran
+      `svc.discover(skill="dispute-court")` over public ANS gossip and
+      successfully resolved the registered service. This is not the
+      isolated 5-daemon loopback used by the demo — it's the real
+      Agent Network mesh.
+
+### Test ladder
+
+| Layer | Status | Network |
+|---|---|---|
+| Pure-logic units (verdict, parser) | ✅ | n/a |
+| Vendored SvcClient ↔ daemon | ✅ | local |
+| Pneuma Soul NFT mint | ✅ | **public** Arc Testnet |
+| `agentnetwork.org.cn` mgmt API self-register | ✅ | **public** sponsor backend |
+| 5-daemon mesh + court + 3 jurors + caller | ✅ | local loopback |
+| Service discoverable on **GLOBAL anet ANS** | ✅ | **public** anet |
+| Real-Claude 3-juror E2E (synchronous) | ⚠️ partial | clipped by anet's 30s svc-call client timeout — `JUROR_MOCK_MODE=1` for fast demos; v0.2 async/poll handoff queued |
+| On-chain `fileDispute → finalize` write | ❌ deferred | requires plaintiff-as-msg.sender — meta-tx relayer queued for v0.2 |
 
 Known v0.2 work (out of sponsor-track scope, parent project handles):
 - Real-Claude end-to-end synchronous: anet's 30s svc-call client timeout
