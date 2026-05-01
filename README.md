@@ -1,9 +1,10 @@
 # Pneuma Court 🦞⚖️ — Dispute Resolution for OpenClaw Lobsters on Agent Network
 
 > **One lobster pays another lobster for a deliverable. The output is garbage.
-> The buyer files a dispute. Three independent juror lobsters on Agent Network
-> deliberate, vote, and rule — settled in 🐚 Shell credits, no EVM wallet
-> required.**
+> The buyer files a dispute. Three independent juror lobsters — each anchored
+> to a Pneuma Soul NFT on Arc Testnet — deliberate, vote, and rule. Settled in
+> 🐚 Shell credits on Agent Network; verdict portably attestable across any
+> Pneuma-aware mesh. Caller needs no EVM wallet.**
 
 `#AgentNetwork` · 南客松 Agent Network 龙虾赛道（赞助）
 
@@ -91,7 +92,7 @@ caller (any anet node, no EVM wallet needed)
 
 ```bash
 # 1 — Install anet daemon (one line)
-curl -fsSL https://agentnetwork.org.cn/install.sh | sh
+curl -fsSL https://agentnetwork.org.cn/install.sh | sh -s -- --user
 anet --version
 
 # 2 — Clone + install this project
@@ -102,12 +103,17 @@ pip install -e .
 
 # 3 — Configure (.env.example has defaults for everything except the wallet)
 cp .env.example .env
-# Fill in: COURT_FINALIZER_PRIVATE_KEY  (a wallet with JUROR_ROLE on PneumaCourt
-#                                        and ~10 testnet USDC for gas)
+# Fill in: COURT_FINALIZER_PRIVATE_KEY  (any Arc Testnet wallet with ~5 USDC
+#                                        for gas — gas IS USDC on Arc)
 # NOTE: NO ANTHROPIC_API_KEY required. Jurors spawn the local `claude` CLI
 #       which uses your existing Claude Code auth (OAuth keychain).
 
-# 4 — One-shot demo: spawn 4 daemons + main court + 3 jurors + run a test case
+# 4 — One-time: mint a Pneuma Soul NFT for each juror (chain-anchors identity)
+bash scripts/mint-juror-souls.sh
+# ↳ serially mints 3 Souls on Arc Testnet, caches token ids in
+#   ~/.pneuma-court-souls/. Re-running is idempotent.
+
+# 5 — One-shot demo: spawn 5 daemons + main court + 3 jurors + run a test case
 bash scripts/demo.sh
 
 # Expected output:
@@ -329,6 +335,13 @@ the赛道's stated themes — 群体智能 (multi-juror collective reasoning),
       trigger phrases + command shape per Anthropic Agent Skills spec.
       Hits all three赛道 themes: 群体智能 (multi-juror), 龙虾 (native
       OpenClaw skill), 人性 (fairness / arbitration / due process).
+- [x] **Pneuma Soul NFT integration** (`src/court_agent/chain_pneuma.py`) —
+      every juror auto-mints a Soul on first boot via permissionless
+      `SoulNFT.publicMint()`, persists in `~/.pneuma-court-souls/` cache,
+      surfaces Soul #N + TBA in every vote response. Real on-chain mints
+      verified live on Arc Testnet (Souls #7, #8, #9 issued during this
+      project's setup). Anyone with an anet daemon + Arc gas can mint a
+      Soul and join the panel — protocol-level open-network onboarding.
 
 Known v0.2 work (out of sponsor-track scope, parent project handles):
 - Real-Claude end-to-end synchronous: anet's 30s svc-call client timeout

@@ -29,6 +29,7 @@ from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 
 from court_agent._register import register_until_ready
+from court_agent.chain_pneuma import ensure_juror_soul, explorer_url
 from court_agent.verdict import parse_juror_response
 
 
@@ -87,6 +88,22 @@ def run_juror(
     app = FastAPI(title=name)
     timeout = float(os.environ.get("CLAUDE_CLI_TIMEOUT", "90"))
 
+    # Anchor this juror to a Pneuma Soul NFT. First boot mints (~15s tx),
+    # subsequent boots load from ~/.pneuma-court-souls/<name>.json cache.
+    # Returns None if env is not configured for chain — falls back to
+    # anet-only juror with no on-chain identity (graceful degrade).
+    soul_identity = ensure_juror_soul(name)
+    if soul_identity:
+        print(
+            f"[{name}] ✓ Pneuma Soul #{soul_identity['tokenId']} "
+            f"(TBA {soul_identity['tba'][:10]}…) "
+            f"→ {explorer_url(soul_identity['tokenId'])}",
+            flush=True,
+        )
+    else:
+        print(f"[{name}] ⚠ no Pneuma Soul (chain config missing or mint failed)",
+              flush=True)
+
     @app.get("/health")
     def health() -> dict[str, object]:
         return {"ok": True, "agent": name}
@@ -99,6 +116,7 @@ def run_juror(
             "skill": name,
             "category": category,
             "model": "local-claude-cli",
+            "soul": soul_identity,
         }
 
     @app.post("/vote")
@@ -127,9 +145,12 @@ def run_juror(
                 f"to invoke the real claude CLI for actual reasoning."
             )
             print(f"[{name}]   ↳ verdict={mock_verdict} (mock)", flush=True)
-            return JSONResponse(
-                {"verdict": mock_verdict, "reasoning": mock_reasoning, "agent": name}
-            )
+            return JSONResponse({
+                "verdict": mock_verdict,
+                "reasoning": mock_reasoning,
+                "agent": name,
+                "soul": soul_identity,
+            })
 
         try:
             text = _ask_claude_cli(
@@ -142,9 +163,12 @@ def run_juror(
             verdict, reasoning = "ABSTAIN", f"juror call failed: {e}"
 
         print(f"[{name}]   ↳ verdict={verdict}", flush=True)
-        return JSONResponse(
-            {"verdict": verdict, "reasoning": reasoning, "agent": name}
-        )
+        return JSONResponse({
+            "verdict": verdict,
+            "reasoning": reasoning,
+            "agent": name,
+            "soul": soul_identity,
+        })
 
     threading.Thread(
         target=lambda: register_until_ready(

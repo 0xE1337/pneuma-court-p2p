@@ -70,12 +70,29 @@ def main() -> int:
     if result.get("error"):
         print(f"  error:     {result['error']}")
     print()
-    print("══ JUROR VOTES ═══════════════════════════════════════════════════════")
     jurors = result.get("jurors", [])
+
+    # Show panel identities first (Pneuma Soul anchoring) — gives the run a
+    # cross-mesh-reputation framing before the verdict text appears.
+    soul_jurors = [j for j in jurors if j.get("soul")]
+    if soul_jurors:
+        print("══ PANEL (verified on-chain identities · Pneuma Soul NFT) ═════════════")
+        for j in soul_jurors:
+            soul = j["soul"]
+            tba = soul.get("tba", "?")
+            print(f"  ▸ {j.get('juror'):<20s} Soul #{soul['tokenId']}  TBA {tba[:10]}…")
+            print(f"     verify on testnet.arcscan.app/token/0x5b51…A959/instance/{soul['tokenId']}")
+        print()
+
+    print("══ DELIBERATION ═══════════════════════════════════════════════════════")
     if not jurors:
         print("  (no juror votes recorded)")
     for j in jurors:
-        print(f"  ▸ {j.get('juror')}: {j.get('verdict')}")
+        prefix = j.get("juror", "?")
+        soul = j.get("soul")
+        if soul:
+            prefix = f"{j.get('juror')} (Soul #{soul['tokenId']})"
+        print(f"  ▸ {prefix}: {j.get('verdict')}")
         reasoning = (j.get("reasoning") or "").replace("\n", " ").strip()
         if reasoning:
             print(f"      ↳ {reasoning[:240]}")

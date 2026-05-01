@@ -112,6 +112,7 @@ def _call_juror(svc: SvcClient, peer: dict[str, Any], case: dict[str, Any]) -> d
         "peer_id": peer_id,
         "verdict": body["verdict"],
         "reasoning": body.get("reasoning", ""),
+        "soul": body.get("soul"),
     }
 
 
