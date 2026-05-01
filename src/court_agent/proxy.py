@@ -32,6 +32,31 @@ def _find_jurors(svc: SvcClient, category: str) -> list[dict[str, Any]]:
     return []
 
 
+def _extract_body(resp: dict[str, Any]) -> dict[str, Any]:
+    """anet svc call --json output shape varies between versions.
+    Empirically observed:
+      (a) raw passthrough:    {"verdict": ..., "reasoning": ..., "agent": ...}
+      (b) wrapped:            {"body": {"verdict": ..., ...}, "status": 200}
+      (c) double-wrapped raw: {"body": "<json string>"}
+    Normalise all three to a single body dict."""
+    if not isinstance(resp, dict):
+        return {}
+    if "verdict" in resp:
+        return resp
+    body = resp.get("body")
+    if isinstance(body, dict):
+        return body
+    if isinstance(body, str):
+        try:
+            import json as _json
+            parsed = _json.loads(body)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:  # noqa: BLE001
+            pass
+    return {}
+
+
 def _call_juror(svc: SvcClient, peer: dict[str, Any], case: dict[str, Any]) -> dict[str, Any]:
     """Call a juror's /vote endpoint. Wraps failures as ABSTAIN votes so
     one flaky peer doesn't tank the whole deliberation."""
@@ -47,12 +72,12 @@ def _call_juror(svc: SvcClient, peer: dict[str, Any], case: dict[str, Any]) -> d
             "reasoning": f"call failed: {e}",
         }
 
-    body = resp.get("body") or {}
-    if not isinstance(body, dict) or "verdict" not in body:
+    body = _extract_body(resp)
+    if "verdict" not in body:
         return {
             "juror": name, "peer_id": peer_id,
             "verdict": "ABSTAIN",
-            "reasoning": f"unexpected response shape: {body!r}",
+            "reasoning": f"unexpected response shape: {resp!r}",
         }
 
     return {
@@ -107,6 +132,9 @@ def deliberate(case: dict[str, Any], *, caller_did: str | None) -> dict[str, Any
     # operator's wallet pays it, and anet callers never need an EVM wallet.
     #
     # Auto-fallback rules:
+    #   • COURT_DISABLE_ONCHAIN=1 (operator opt-out, e.g. for fast demo runs
+    #     where the 30s anet svc-call timeout would clip on-chain work)
+    #     → skip silently, return anet-only result
     #   • court not configured for on-chain (missing RPC / address / key)
     #     → skip silently, return anet-only result
     #   • on-chain attempt fails (RPC down, gas exhausted, role missing)
@@ -114,6 +142,12 @@ def deliberate(case: dict[str, Any], *, caller_did: str | None) -> dict[str, Any
     #
     # Off-chain ruling is the source of truth either way; the on-chain write
     # is a portable, publicly-verifiable receipt of it.
+    if os.environ.get("COURT_DISABLE_ONCHAIN") == "1":
+        result["onchain_skipped_reason"] = (
+            "operator set COURT_DISABLE_ONCHAIN=1 — running anet-only"
+        )
+        return result
+
     if not has_chain_config():
         result["onchain_skipped_reason"] = (
             "court has no on-chain config (ARC_RPC_URL / PNEUMA_COURT_ADDRESS"

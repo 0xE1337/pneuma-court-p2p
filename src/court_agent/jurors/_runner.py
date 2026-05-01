@@ -110,6 +110,27 @@ def run_juror(
         case_id = case.get("caseId")
         print(f"[{name}] caller={x_agent_did} caseId={case_id!r}", flush=True)
 
+        # JUROR_MOCK_MODE bypasses the (slow) claude CLI for fast E2E
+        # demos that fit inside anet's 30s svc-call timeout. Each juror
+        # flavor returns a deterministic verdict matching their domain
+        # bias — useful for verifying the mesh + anet plumbing without
+        # waiting on real LLM inference.
+        if os.environ.get("JUROR_MOCK_MODE") == "1":
+            mock_verdict = {
+                "economic": "PLAINTIFF",
+                "legal":    "DEFENDANT",
+                "fairness": "PLAINTIFF",
+            }.get(category, "ABSTAIN")
+            mock_reasoning = (
+                f"[mock-mode] {category} juror returns {mock_verdict} "
+                f"based on a stubbed domain bias. Set JUROR_MOCK_MODE=0 "
+                f"to invoke the real claude CLI for actual reasoning."
+            )
+            print(f"[{name}]   ↳ verdict={mock_verdict} (mock)", flush=True)
+            return JSONResponse(
+                {"verdict": mock_verdict, "reasoning": mock_reasoning, "agent": name}
+            )
+
         try:
             text = _ask_claude_cli(
                 system_prompt,
