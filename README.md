@@ -98,17 +98,23 @@ This is `examples/03-multi-agent-pipeline/` from the anet starter kit, repurpose
 ## On-chain settlement (default, free)
 
 Every verdict is finalized on the [`PneumaCourt`](docs/onchain-bonus.md)
-contract on Arc Testnet. The court does this automatically when the
-operator has configured `ARC_RPC_URL` + `PNEUMA_COURT_ADDRESS` +
-`COURT_FINALIZER_PRIVATE_KEY` in `.env`.
+contract at [`0x3371...66AC`](https://testnet.arcscan.app/address/0x3371e96b29b5565EF2622A141cDAD3912Daa66AC)
+on Arc Testnet (chain id `5042002`, RPC `https://rpc.testnet.arc.network`).
+The court does this automatically when the operator has configured
+`ARC_RPC_URL` + `PNEUMA_COURT_ADDRESS` + `COURT_FINALIZER_PRIVATE_KEY`.
 
 **Gas model — why callers don't need a wallet**:
 
 | Who | Pays | What |
 |---|---|---|
 | Caller | 🐚 Shell only (e.g. 20🐚) | The court call itself |
-| Court operator | Arc Testnet ETH | gas for `fileDispute` + `vote` + `finalize` |
-| Arc Testnet | (gas is free from faucet) | Operator's actual cost ≈ 0 |
+| Court operator | testnet USDC (~cents/call) | gas for `fileDispute` + `vote` + `finalize` |
+| Circle faucet | free | one drip funds thousands of calls |
+
+> **Heads-up**: on Arc Testnet, **native gas IS USDC** — the contract at
+> `0x3600...0000` serves as both the ERC-20 USDC interface and the gas
+> token. The court operator does not need separate ETH; one Circle faucet
+> drip lasts the whole hackathon.
 
 The court opens the dispute on the caller's behalf via `fileDispute()`,
 then casts the aggregated verdict via `vote()`, then closes it via

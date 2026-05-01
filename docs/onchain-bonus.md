@@ -30,18 +30,45 @@
 > Shell economy and any external chain. Future versions may use account
 > abstraction / paymasters; for now, the operator-pays model works.
 
+## Arc Testnet — quick reference
+
+| Field | Value |
+|---|---|
+| Chain name | Arc Testnet |
+| Chain ID | `5042002` (`0x4cef52`) |
+| RPC URL | `https://rpc.testnet.arc.network` |
+| Block explorer | `https://testnet.arcscan.app` |
+| PneumaCourt contract | [`0x3371e96b29b5565EF2622A141cDAD3912Daa66AC`](https://testnet.arcscan.app/address/0x3371e96b29b5565EF2622A141cDAD3912Daa66AC) |
+| USDC contract | `0x3600000000000000000000000000000000000000` |
+| USDC faucet | https://faucet.circle.com |
+
+> **Note on gas**: Arc Testnet is a Circle chain — **native gas IS USDC**
+> (the contract at `0x3600...0000` serves as both an ERC-20 USDC interface
+> and the native gas token). You do not need separate ETH. Request testnet
+> USDC from the Circle faucet, send a tiny amount to your finalizer wallet,
+> and you can pay gas indefinitely. A finalize call costs a few cents'
+> equivalent.
+
 ## Setup (court operator only)
 
-### 1. Get an EVM wallet funded on Arc Testnet
+### 1. Generate a finalizer wallet
 
-Any wallet with a small testnet ETH balance is enough. A few cents per
-finalize call is typical.
+```bash
+# any standard EVM keypair generator works; foundry's cast example:
+cast wallet new
+# → save the private key into .env as COURT_FINALIZER_PRIVATE_KEY
+```
 
-### 2. Grant `JUROR_ROLE` to your wallet
+### 2. Fund it with testnet USDC
 
-The deployed `PneumaCourt` contract on Arc Testnet at
-[`0x3371e96b29b5565EF2622A141cDAD3912Daa66AC`](https://explorer.arc-testnet.example/address/0x3371e96b29b5565EF2622A141cDAD3912Daa66AC)
-restricts `vote()` and `finalize()` to addresses with `JUROR_ROLE`.
+Visit https://faucet.circle.com, select **Arc Testnet**, paste your finalizer
+address, request USDC. A single drip (~10 USDC) covers thousands of finalize
+calls.
+
+### 3. Grant `JUROR_ROLE` to your wallet
+
+The deployed `PneumaCourt` contract restricts `vote()` and `finalize()` to
+addresses with `JUROR_ROLE`.
 
 If you control the contract admin key:
 
@@ -54,16 +81,17 @@ cast send 0x3371e96b29b5565EF2622A141cDAD3912Daa66AC \
   $ROLE \
   $YOUR_FINALIZER_ADDRESS \
   --private-key $ADMIN_KEY \
-  --rpc-url $ARC_RPC_URL
+  --rpc-url https://rpc.testnet.arc.network
 ```
 
 If you don't control the admin key, the parent Pneuma Protocol team can
-grant it on request.
+grant it on request — the deployer address is
+`0xadC40c12caDE96d5c47A9e986eB6557453E1d594`.
 
-### 3. Configure `.env`
+### 4. Configure `.env`
 
 ```ini
-ARC_RPC_URL=https://rpc.arc-testnet.example
+ARC_RPC_URL=https://rpc.testnet.arc.network
 PNEUMA_COURT_ADDRESS=0x3371e96b29b5565EF2622A141cDAD3912Daa66AC
 COURT_FINALIZER_PRIVATE_KEY=0x...   # the wallet you funded + granted role to
 ```
@@ -71,11 +99,12 @@ COURT_FINALIZER_PRIVATE_KEY=0x...   # the wallet you funded + granted role to
 If you skip any one of these three, the court silently falls back to
 advisory-only mode — no breakage.
 
-### 4. Verify
+### 5. Verify
 
 Submit any case via `examples/run_case.py`. The response should contain a
-non-null `tx_hash` and `dispute_id`. Look the tx up on the Arc Testnet
-block explorer to confirm `DisputeFiled` and `DisputeFinalized` events.
+non-null `tx_hash` and `dispute_id`. Look the tx up on
+[`testnet.arcscan.app`](https://testnet.arcscan.app) to confirm
+`DisputeFiled` and `DisputeFinalized` events.
 
 ## What gets written on-chain
 
