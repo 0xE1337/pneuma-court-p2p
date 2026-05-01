@@ -8,6 +8,5 @@
     "defendant": "Partial output delivered in good faith; clause 4.2 of provider TOS waives refunds on partial completion."
   },
   "expected_jurors": ["economic-juror", "legal-juror", "fairness-juror"],
-  "want_onchain_proof": false,
-  "_comment_on_proof": "Set want_onchain_proof=true ONLY if you also want a cross-network attestation receipt. Default deliberation runs entirely in anet, settled in 🐚 Shell, no EVM wallet needed."
+  "_note": "callId is what the court will fileDispute() against on-chain. The caller does NOT need an EVM wallet — gas is paid by the court operator's finalizer wallet. If the court has no on-chain config, the verdict is still returned over anet (advisory mode)."
 }

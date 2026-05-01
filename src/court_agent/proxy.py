@@ -9,7 +9,7 @@ from typing import Any
 
 from anet.svc import SvcClient
 
-from court_agent.chain import finalize_dispute
+from court_agent.chain import file_dispute, finalize_dispute, has_chain_config
 from court_agent.verdict import majority_vote
 
 ANET_BASE_URL = os.environ.get("ANET_BASE_URL", "http://127.0.0.1:13921")
@@ -104,36 +104,47 @@ def deliberate(case: dict[str, Any], *, caller_did: str | None) -> dict[str, Any
         result["jurors"] = votes
         result["verdict"] = majority_vote(v["verdict"] for v in votes)
 
-    # On-chain finalize is OPT-IN, not the default path.
+    # On-chain write is the default — Arc Testnet gas is free, the court
+    # operator's wallet pays it, and anet callers never need an EVM wallet.
     #
-    # Two gating conditions, BOTH must be true to attempt on-chain write:
-    #   1. caller explicitly requested it via payload: want_onchain_proof=true
-    #   2. court operator hasn't disabled it via env: COURT_ENABLE_ONCHAIN=1
+    # Auto-fallback rules:
+    #   • court not configured for on-chain (missing RPC / address / key)
+    #     → skip silently, return anet-only result
+    #   • on-chain attempt fails (RPC down, gas exhausted, role missing)
+    #     → return verdict anyway, surface error in result.error
     #
-    # gas is paid by the court operator (whoever runs this service), not the
-    # caller — anet callers are not assumed to hold an EVM wallet. The court
-    # recovers gas cost via higher 🐚 Shell pricing for on-chain-proof requests.
-    #
-    # This keeps the default path (anet-only, 🐚 Shell settlement) unchanged
-    # for the 99% of users who don't need a cross-network proof.
-    want_proof = bool(case.get("want_onchain_proof"))
-    onchain_enabled = os.environ.get("COURT_ENABLE_ONCHAIN", "0") == "1"
-
-    if not (want_proof and onchain_enabled and case_id is not None):
+    # Off-chain ruling is the source of truth either way; the on-chain write
+    # is a portable, publicly-verifiable receipt of it.
+    if not has_chain_config():
         result["onchain_skipped_reason"] = (
-            "not requested" if not want_proof
-            else "court operator disabled on-chain"
-            if not onchain_enabled
-            else "no caseId"
+            "court has no on-chain config (ARC_RPC_URL / PNEUMA_COURT_ADDRESS"
+            " / COURT_FINALIZER_PRIVATE_KEY) — running anet-only"
         )
         return result
 
     try:
-        result["tx_hash"] = finalize_dispute(int(case_id), result["verdict"])
+        dispute_id = case.get("disputeId")
+        call_id = case.get("callId")
+        file_tx: str | None = None
+
+        if dispute_id is None:
+            # Court opens the dispute on the caller's behalf — caller does not
+            # need an EVM wallet. Gas comes from the court's finalizer key.
+            if call_id is None:
+                raise RuntimeError(
+                    "case missing both disputeId and callId — cannot open"
+                    " dispute on-chain. Provide one of them."
+                )
+            evidence = case.get("evidence", "")
+            dispute_id, file_tx = file_dispute(int(call_id), evidence)
+
+        finalize_tx = finalize_dispute(int(dispute_id), result["verdict"])
+        result["dispute_id"] = int(dispute_id)
+        result["file_tx"] = file_tx
+        result["tx_hash"] = finalize_tx
     except Exception as e:  # noqa: BLE001
-        # On-chain failure is non-fatal: deliberation result already returns,
-        # caller sees the error in the response and can retry or accept the
-        # off-chain-only ruling.
+        # On-chain failure is non-fatal: the deliberation already produced a
+        # binding verdict over anet — caller still gets a usable response.
         result["error"] = f"on-chain finalize failed: {e}"
 
     return result

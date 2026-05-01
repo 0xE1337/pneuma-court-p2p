@@ -1,9 +1,9 @@
 # Pneuma Court — Multi-Juror Dispute Resolution as P2P Service
 
 > **A P2P dispute-resolution service for Agent Network. Multiple AI jurors
-> discover each other on anet ANS, deliberate independently via Claude, and
-> reach a majority verdict — settled entirely in 🐚 Shell credits. No
-> blockchain wallet required.**
+> discover each other on anet ANS, deliberate independently via Claude, reach
+> a majority verdict, and write a portable receipt on-chain — all without
+> requiring the caller to own a blockchain wallet.**
 
 `#AgentNetwork` · 南客松 S2 P2P Service Gateway 赞助赛道
 
@@ -17,21 +17,30 @@ A working P2P service that turns "dispute resolution" into a multi-agent process
 2. **Discovers** N juror agents in the mesh by skill — `economic-juror`, `legal-juror`, `fairness-juror`, etc.
 3. **Calls each juror** in parallel; each juror is a Claude-powered agent with a domain-specific prompt
 4. **Aggregates verdicts** via majority vote
-5. **Returns the ruling** to the caller — full verdict + per-juror reasoning, all settled in 🐚 Shell
+5. **Writes the ruling on-chain** (Arc Testnet, gas paid by the court operator, free testnet ETH) so the verdict is publicly verifiable
+6. **Returns** verdict + per-juror reasoning + tx hash to the caller
 
 ```
-caller (any anet node)
-    │  anet svc call pneuma-court --body '{"caseId": 7, "category": "economic", ...}'
+caller (any anet node, no EVM wallet needed)
+    │  anet svc call pneuma-court --body '{"caseId": 7, "callId": 142, ...}'
     ▼
 ┌─ pneuma-court (this repo) ─────────────────────────────────────┐
 │  ① svc.discover(skill=f"{category}-juror")  →  N peers         │
 │  ② parallel anet calls →  each juror returns {verdict, reason} │
 │  ③ majority vote                                                │
-│  ④ return {verdict, jurors[], tx_hash?}                        │
-│     · default: settled in 🐚 Shell, no wallet needed            │
-│     · opt-in: on-chain proof (see "On-chain bonus" below)       │
+│  ④ on-chain finalize (court operator pays gas — Arc Testnet)   │
+│      └─ if court has no on-chain config: auto-fallback to       │
+│         advisory-only mode, verdict still returned              │
+│  ⑤ return {verdict, jurors[], dispute_id, tx_hash}             │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+> **Why on-chain by default?** Arc Testnet gas is free from the faucet, the
+> court operator's wallet pays it, and the caller never sees a wallet prompt.
+> The on-chain receipt makes the verdict portable and publicly auditable —
+> any other anet/web3 agent can verify the ruling existed without trusting
+> the court operator. If the court is misconfigured, on-chain is skipped
+> automatically and the deliberation still produces a binding result via anet.
 
 ---
 
@@ -86,39 +95,36 @@ This is `examples/03-multi-agent-pipeline/` from the anet starter kit, repurpose
 
 ---
 
-## On-chain bonus (opt-in)
+## On-chain settlement (default, free)
 
-The default path is anet-only. If a caller wants a **portable, cross-network
-proof** of the verdict (e.g. they're going to cite this ruling on a different
-platform), they can opt in:
+Every verdict is finalized on the [`PneumaCourt`](docs/onchain-bonus.md)
+contract on Arc Testnet. The court does this automatically when the
+operator has configured `ARC_RPC_URL` + `PNEUMA_COURT_ADDRESS` +
+`COURT_FINALIZER_PRIVATE_KEY` in `.env`.
 
-```jsonc
-// case payload — extra fields
-{
-  "caseId": 7,
-  "category": "economic",
-  "evidence": "...",
-  "want_onchain_proof": true,            // ← opt-in flag
-  "beneficiary_address": "0xabc..."      // ← who the attestation is for
-}
-```
+**Gas model — why callers don't need a wallet**:
 
-When this flag is set AND the court operator has enabled on-chain support
-(`COURT_ENABLE_ONCHAIN=1` in `.env`), the court additionally writes the
-verdict to the [`PneumaCourt`](docs/onchain-bonus.md) contract on Arc Testnet.
+| Who | Pays | What |
+|---|---|---|
+| Caller | 🐚 Shell only (e.g. 20🐚) | The court call itself |
+| Court operator | Arc Testnet ETH | gas for `fileDispute` + `vote` + `finalize` |
+| Arc Testnet | (gas is free from faucet) | Operator's actual cost ≈ 0 |
 
-**Gas economics**:
-- **Caller does NOT need an EVM wallet.** Settlement is in 🐚 Shell.
-- Gas is paid by the **court operator's** wallet (`COURT_FINALIZER_PRIVATE_KEY`).
-- The court recovers cost by charging more 🐚 Shell for proof-included calls
-  (e.g. 50🐚 instead of 20🐚 — fully at the operator's discretion).
+The court opens the dispute on the caller's behalf via `fileDispute()`,
+then casts the aggregated verdict via `vote()`, then closes it via
+`finalize()`. All three transactions sign with the operator's
+`COURT_FINALIZER_PRIVATE_KEY`. The caller never sees a wallet prompt.
 
-If on-chain fails (RPC down, wallet underfunded), the verdict is still
-returned over anet — the off-chain ruling is the source of truth, the
-on-chain write is a **portable receipt** of it.
+**Auto-fallback — graceful degrade if the chain is unreachable**:
 
-See [docs/onchain-bonus.md](docs/onchain-bonus.md) for setup details and the
-contract address on Arc Testnet.
+- Court not configured (any RPC/address/key missing) → skip on-chain,
+  return verdict over anet only.
+- Court configured but transaction fails (RPC down, role not granted,
+  gas exhausted) → verdict still returned, error surfaced in
+  `result.error`. The off-chain ruling is the source of truth.
+
+See [docs/onchain-bonus.md](docs/onchain-bonus.md) for the JUROR_ROLE
+grant command and the contract address on Arc Testnet.
 
 ---
 

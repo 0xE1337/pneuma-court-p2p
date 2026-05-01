@@ -1,22 +1,17 @@
-# On-chain Bonus Track (opt-in)
+# On-chain Settlement (default behavior)
 
-> **TL;DR**: This is **not** required to use Pneuma Court. The default path
-> runs entirely inside anet, settles in 🐚 Shell, and needs no EVM wallet.
-> On-chain attestation is a *bonus* offered by court operators who want to
-> provide cross-network portable receipts of verdicts. It costs the operator
-> gas, which they recover by charging more 🐚 Shell.
+> **TL;DR**: Every verdict is written on-chain by default. Gas is paid by the
+> court operator's wallet using free Arc Testnet ETH. Callers never need an
+> EVM wallet. If the court isn't configured for on-chain, it falls back to
+> advisory-only mode automatically — no setup is forced on you.
 
-## Who needs this?
+## Who reads this page?
 
-You only care about this page if:
-
-- You are running a `pneuma-court` service AND
-- You want to offer callers a **portable, cross-network proof** of the verdict
-  (so they can cite it elsewhere — on a different mesh, in a different
-  product, on-chain DAO governance, etc.)
-
-If you're a **caller** asking for a verdict, you do **not** need an EVM
-wallet. Just send the case to `pneuma-court` over anet and pay 🐚 Shell.
+- **Court operators** setting up `pneuma-court` for the first time — you need
+  the JUROR_ROLE grant + faucet steps below.
+- **Curious callers** who want to understand what happens behind the scenes
+  when they get a `tx_hash` back. (You don't need to do anything; the court
+  handles it for you.)
 
 ## Gas model
 
@@ -68,17 +63,19 @@ grant it on request.
 ### 3. Configure `.env`
 
 ```ini
-COURT_ENABLE_ONCHAIN=1
 ARC_RPC_URL=https://rpc.arc-testnet.example
 PNEUMA_COURT_ADDRESS=0x3371e96b29b5565EF2622A141cDAD3912Daa66AC
 COURT_FINALIZER_PRIVATE_KEY=0x...   # the wallet you funded + granted role to
 ```
 
+If you skip any one of these three, the court silently falls back to
+advisory-only mode — no breakage.
+
 ### 4. Verify
 
-Submit a case with `"want_onchain_proof": true` in the payload. The response
-will contain `tx_hash`. Look it up on the Arc Testnet block explorer to
-confirm.
+Submit any case via `examples/run_case.py`. The response should contain a
+non-null `tx_hash` and `dispute_id`. Look the tx up on the Arc Testnet
+block explorer to confirm `DisputeFiled` and `DisputeFinalized` events.
 
 ## What gets written on-chain
 
