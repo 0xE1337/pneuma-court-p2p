@@ -15,7 +15,7 @@ import sys
 import time
 from pathlib import Path
 
-from anet.svc import SvcClient
+from court_agent._anet_client import SvcClient
 
 DEFAULT_CASE = Path(__file__).resolve().parent / "case-economic-dispute.json"
 

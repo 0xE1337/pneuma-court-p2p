@@ -52,7 +52,7 @@ curl -fsSL https://agentnetwork.org.cn/install.sh | sh
 anet --version
 
 # 2 — Clone + install this project
-git clone https://github.com/0xE/pneuma-court-p2p
+git clone https://github.com/0xE1337/pneuma-court-p2p
 cd pneuma-court-p2p
 python -m venv .venv && source .venv/bin/activate
 pip install -e .

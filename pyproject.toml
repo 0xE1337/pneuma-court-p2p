@@ -12,7 +12,11 @@ license = {text = "MIT"}
 authors = [{name = "0xE"}]
 keywords = ["agent-network", "anet", "p2p", "court", "dispute-resolution", "pneuma", "x402", "ethereum", "arc-testnet"]
 dependencies = [
-    "anet>=1.1.0",
+    # NOTE on anet: the starter kit's `from anet.svc import SvcClient` is
+    # not a published PyPI package. We vendor an equivalent subprocess-
+    # backed wrapper at court_agent/_anet_client.py. Runtime requirement
+    # is the `anet` CLI binary on $PATH (install via
+    # `curl -fsSL https://agentnetwork.org.cn/install.sh | sh -s -- --user`).
     "fastapi>=0.110",
     "uvicorn>=0.29",
     "httpx>=0.25",

@@ -8,7 +8,8 @@ import time
 from typing import Optional
 
 import httpx
-from anet.svc import SvcAPIError, SvcClient
+
+from court_agent._anet_client import SvcAPIError, SvcClient
 
 
 def register_until_ready(

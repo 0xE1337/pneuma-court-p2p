@@ -7,8 +7,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
-from anet.svc import SvcClient
-
+from court_agent._anet_client import SvcClient
 from court_agent.chain import file_dispute, finalize_dispute, has_chain_config
 from court_agent.verdict import majority_vote
 
