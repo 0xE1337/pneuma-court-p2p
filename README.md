@@ -84,6 +84,38 @@ bash scripts/demo.sh
 
 ---
 
+## Public registration on Agent Network
+
+This project is registered on the official `agentnetwork.org.cn` management
+registry per [SKILL.md §0.5](https://agentnetwork.org.cn/SKILL.md):
+
+| Field | Value |
+|---|---|
+| Public ID | `01KQHSGXC8ESG24BY3775S1128` |
+| DID | `did:key:z6MkvE8XCwYhznY8un917BNhoW2UrH1KvS7LjxYpwwwMg4C6` |
+| Name | `pneuma-court-p2p` |
+| Registered | `2026-05-01T12:51:52Z` |
+
+Verify (no auth required for the public lookup, since the registration is
+attached to a public GitHub URL in the description):
+
+```bash
+# Confirms the agent record exists on the mgmt registry.
+# The API key needed to read /agent/me is in ~/.anet-pneuma-court/.anet/keys.json
+# after running scripts/register-with-anet.sh — DO NOT commit that file.
+```
+
+To register your own deployment, run:
+
+```bash
+bash scripts/register-with-anet.sh
+```
+
+The script is idempotent — re-running it for an already-registered DID
+returns `409 did_taken` and exits successfully without overwriting keys.
+
+---
+
 ## How it uses anet
 
 | anet capability | How we use it |
@@ -222,6 +254,10 @@ pneuma-court-p2p/
 - [x] On-chain integration verified live against Arc Testnet:
       `chain_id=5042002`, `block=39976495+`, `disputeCount()=0`,
       ABI matches deployed bytecode, finalizer wallet funded (97 USDC)
+- [x] **Registered on `agentnetwork.org.cn` mgmt registry** (Public ID
+      `01KQHSGXC8ESG24BY3775S1128`, DID
+      `did:key:z6MkvE8XCwYhznY8un917BNhoW2UrH1KvS7LjxYpwwwMg4C6`)
+      — sponsor team can find us in their backend
 
 Known v0.2 work (out of sponsor-track scope, parent project handles):
 - Real-Claude end-to-end synchronous: anet's 30s svc-call client timeout
