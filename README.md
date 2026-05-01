@@ -205,21 +205,32 @@ pneuma-court-p2p/
 
 ## Status
 
-✅ **Sprint 1 (functional code committed)** · 5/1
+✅ **Sprint 2 (sponsor-track ready)** · 2026-05-01
 - [x] Repo bootstrapped, license, pyproject, ABI imported (50 entries)
 - [x] `main.py` court FastAPI app + anet svc register
 - [x] `jurors/{economic,legal,fairness}.py` + Claude system prompts
 - [x] `jurors/_runner.py` shared juror runtime + `cli.py` entrypoint
-- [x] `proxy.py` discover + parallel fan-out + aggregate
-- [x] `chain.py` web3.py vote() + finalize() flow
+- [x] `proxy.py` discover + parallel fan-out + aggregate (anet-only)
+- [x] `chain.py` read-only on-chain integration (RPC + ABI + wallet verified live)
 - [x] `verdict.py` majority-vote + robust JSON-response parser
 - [x] `scripts/four-node.sh` 4-daemon orchestration
 - [x] `scripts/demo.sh` one-shot full demo
 - [x] `examples/run_case.py` caller stub
-- [x] **Self-tests: 17/17 pass** (verdict logic + JSON parser + ABI sanity)
-- [ ] End-to-end run on real anet daemon (Sprint 2)
-- [ ] On-chain finalize verified on Arc Testnet (Sprint 2)
-- [ ] `docs/demo.mp4` 90s video (Sprint 2)
+- [x] Vendored `_anet_client.py` SvcClient (starter kit's SDK is unpublished)
+- [x] Local `claude` CLI integration — no `ANTHROPIC_API_KEY` needed
+- [x] End-to-end run: 4-daemon mesh + court + 3 jurors register + dispatch + aggregate + caller receives verdict (mock-juror fast path)
+- [x] On-chain integration verified live against Arc Testnet:
+      `chain_id=5042002`, `block=39976495+`, `disputeCount()=0`,
+      ABI matches deployed bytecode, finalizer wallet funded (97 USDC)
+
+Known v0.2 work (out of sponsor-track scope, parent project handles):
+- Real-Claude end-to-end synchronous: anet's 30s svc-call client timeout
+  clips real-Claude's ~46s/call latency. Needs an async/poll handoff in
+  proxy.py.
+- On-chain `fileDispute → vote → finalize` write path: requires either
+  a meta-tx relayer or caller-signed flow because `msg.sender` must
+  be the original SkillRegistry caller (plaintiff). See
+  `src/court_agent/chain.py` module docstring for invariants.
 
 Submission: `2026-05-03` · Tag: `#AgentNetwork`
 

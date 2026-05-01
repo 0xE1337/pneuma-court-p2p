@@ -1,13 +1,44 @@
-"""Arc Testnet bridge — read PneumaCourt state and finalize verdicts on-chain.
+"""Arc Testnet bridge — read PneumaCourt state.
 
 Required env vars:
     ARC_RPC_URL                    — JSON-RPC endpoint
     PNEUMA_COURT_ADDRESS           — contract address (default in .env.example)
-    COURT_FINALIZER_PRIVATE_KEY    — wallet with JUROR_ROLE on PneumaCourt
+    COURT_FINALIZER_PRIVATE_KEY    — finalizer wallet (gas + future writes)
 
-Workflow per dispute (off-chain mesh deliberation already produced a verdict):
-    1. vote(disputeId, code)       — finalizer casts a single aggregated vote
-    2. finalize(disputeId)         — closes the case, slash/refund triggers fire
+────────────────────────────────────────────────────────────────────────
+WRITE-PATH STATUS — read carefully before enabling on-chain finalize
+────────────────────────────────────────────────────────────────────────
+
+PneumaCourt's `fileDispute(callId, evidenceHash, description, jurors[])`
+has stricter invariants than a generic on-chain logger:
+
+    1. msg.sender MUST be the plaintiff — i.e. the original `caller`
+       address recorded in SkillRegistry.getCall(callId). If our court
+       service tries to fileDispute on the caller's behalf, the contract
+       reverts with NotPlaintiff.
+
+    2. The call referenced by `callId` MUST be settled (status == 1).
+       Unsettled calls go through the timeout-slash path, not the court.
+
+    3. `jurors` MUST be ≥ MIN_JURORS (3) addresses, each holding a Soul
+       NFT, none of them the plaintiff or defendant.
+
+These invariants are by design: the court is the parent Pneuma protocol's
+on-chain dispute lifecycle, where every party already holds a wallet and
+a Soul. Our anet-side multi-juror deliberation is a complementary off-
+chain layer — it produces the *reasoning* a Pneuma user can attach to a
+real fileDispute call when they later raise one through the parent app.
+
+For the sponsor-track submission window, this module exposes only
+read-only on-chain helpers (has_chain_config, get_dispute, disputeCount).
+The write path is intentionally not implemented here — wiring it up
+requires either:
+
+  (a) a meta-tx / account-abstraction relayer so the court can fileDispute
+      on the caller's behalf (v0.2 work), or
+  (b) the caller signing fileDispute themselves through the parent Pneuma
+      hub UI (already implemented at apps/hub/app/court/new in the parent
+      project — out of scope for this repo).
 """
 
 from __future__ import annotations
@@ -89,88 +120,35 @@ def get_dispute(dispute_id: int) -> dict[str, Any]:
     return {"raw": raw}
 
 
-def file_dispute(call_id: int, evidence: str) -> tuple[int, str]:
-    """Open a dispute on-chain. Court operator pays gas — caller needs no wallet.
-
-    Returns (dispute_id, tx_hash). Raises if the receipt has no DisputeFiled
-    event or if the wallet/RPC is misconfigured.
-    """
+def dispute_count() -> int:
+    """Read PneumaCourt.disputeCount() — useful as a sanity check that
+    RPC + contract address + ABI all align."""
     w3 = _w3()
-    acct = _finalizer_account()
-    contract = _contract(w3)
+    return int(_contract(w3).functions.disputeCount().call())
 
-    tx = contract.functions.fileDispute(call_id, evidence).build_transaction({
-        "from": acct.address,
-        "nonce": w3.eth.get_transaction_count(acct.address),
-        "gas": 300_000,
-        "gasPrice": w3.eth.gas_price,
-    })
-    signed = acct.sign_transaction(tx)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
 
-    # Decode DisputeFiled event to extract the dispute id assigned by the contract.
-    try:
-        events = contract.events.DisputeFiled().process_receipt(receipt)
-    except Exception:  # noqa: BLE001 — fall back to manual log parsing below
-        events = []
+# ────────────────────────────────────────────────────────────────────────
+# Write path — intentionally not implemented in v0.1.
+#
+# See the module docstring for why fileDispute / finalize cannot be safely
+# invoked from this service: msg.sender must be the plaintiff (the original
+# SkillRegistry caller) and jurors must be N independent Soul holders. A
+# single court-operator wallet acting on behalf of an anet caller would
+# revert with NotPlaintiff. The proxy gates on this and runs anet-only
+# unless a future meta-tx / AA relayer is wired up.
+# ────────────────────────────────────────────────────────────────────────
 
-    if events:
-        dispute_id = int(events[0]["args"]["disputeId"])
-    else:
-        # Fallback: many implementations also expose disputeCount() — read it
-        # back as the just-assigned id (count is post-incremented).
-        dispute_id = int(contract.functions.disputeCount().call())
-        if dispute_id == 0:
-            raise RuntimeError(
-                f"fileDispute receipt parsed no event and disputeCount=0 "
-                f"(tx={tx_hash.hex()})"
-            )
 
-    return dispute_id, tx_hash.hex()
+def file_dispute(call_id: int, evidence: str) -> tuple[int, str]:
+    raise NotImplementedError(
+        "fileDispute requires msg.sender to be the original SkillRegistry "
+        "caller (plaintiff) with N Soul-holding jurors. See chain.py "
+        "module docstring for the v0.2 meta-tx plan."
+    )
 
 
 def finalize_dispute(dispute_id: int, verdict: str) -> str:
-    """Cast aggregated vote + finalize. Returns the finalize tx hash (hex)."""
-    code = _VERDICT_CODE.get(verdict)
-    if code is None or verdict == "NONE":
-        raise ValueError(f"Invalid verdict for on-chain submission: {verdict!r}")
-
-    w3 = _w3()
-    acct = _finalizer_account()
-    contract = _contract(w3)
-
-    # Best-effort: skip vote() if finalizer has already voted (lets the demo
-    # be re-runnable on the same disputeId without revert).
-    already_voted = False
-    try:
-        already_voted = contract.functions.hasVoted(dispute_id, acct.address).call()
-    except Exception:  # noqa: BLE001 — view fallback, ignore
-        pass
-
-    nonce = w3.eth.get_transaction_count(acct.address)
-    gas_price = w3.eth.gas_price
-
-    if not already_voted:
-        vote_tx = contract.functions.vote(dispute_id, code).build_transaction({
-            "from": acct.address,
-            "nonce": nonce,
-            "gas": 200_000,
-            "gasPrice": gas_price,
-        })
-        signed_vote = acct.sign_transaction(vote_tx)
-        vote_hash = w3.eth.send_raw_transaction(signed_vote.raw_transaction)
-        w3.eth.wait_for_transaction_receipt(vote_hash, timeout=60)
-        nonce += 1
-
-    fin_tx = contract.functions.finalize(dispute_id).build_transaction({
-        "from": acct.address,
-        "nonce": nonce,
-        "gas": 250_000,
-        "gasPrice": gas_price,
-    })
-    signed_fin = acct.sign_transaction(fin_tx)
-    fin_hash = w3.eth.send_raw_transaction(signed_fin.raw_transaction)
-    w3.eth.wait_for_transaction_receipt(fin_hash, timeout=60)
-
-    return fin_hash.hex()
+    raise NotImplementedError(
+        "finalize requires the dispute to have been filed first via "
+        "fileDispute (caller-signed). See chain.py module docstring."
+    )

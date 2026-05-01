@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from court_agent._anet_client import SvcClient
-from court_agent.chain import file_dispute, finalize_dispute, has_chain_config
+from court_agent.chain import has_chain_config
 from court_agent.verdict import majority_vote
 
 ANET_BASE_URL = os.environ.get("ANET_BASE_URL", "http://127.0.0.1:13921")
@@ -128,56 +128,27 @@ def deliberate(case: dict[str, Any], *, caller_did: str | None) -> dict[str, Any
         result["jurors"] = votes
         result["verdict"] = majority_vote(v["verdict"] for v in votes)
 
-    # On-chain write is the default — Arc Testnet gas is free, the court
-    # operator's wallet pays it, and anet callers never need an EVM wallet.
+    # v0.1 ships anet-only deliberation. The on-chain write path is held back
+    # because PneumaCourt.fileDispute requires msg.sender to be the original
+    # SkillRegistry caller (plaintiff) — see src/court_agent/chain.py docstring
+    # for the exact invariants and the v0.2 meta-tx plan.
     #
-    # Auto-fallback rules:
-    #   • COURT_DISABLE_ONCHAIN=1 (operator opt-out, e.g. for fast demo runs
-    #     where the 30s anet svc-call timeout would clip on-chain work)
-    #     → skip silently, return anet-only result
-    #   • court not configured for on-chain (missing RPC / address / key)
-    #     → skip silently, return anet-only result
-    #   • on-chain attempt fails (RPC down, gas exhausted, role missing)
-    #     → return verdict anyway, surface error in result.error
-    #
-    # Off-chain ruling is the source of truth either way; the on-chain write
-    # is a portable, publicly-verifiable receipt of it.
-    if os.environ.get("COURT_DISABLE_ONCHAIN") == "1":
-        result["onchain_skipped_reason"] = (
-            "operator set COURT_DISABLE_ONCHAIN=1 — running anet-only"
-        )
-        return result
-
-    if not has_chain_config():
-        result["onchain_skipped_reason"] = (
+    # Read-only on-chain integration IS verified (chain.has_chain_config /
+    # chain.dispute_count / chain.get_dispute) and the result includes a
+    # snapshot of the contract state when configured.
+    if has_chain_config():
+        try:
+            from court_agent.chain import dispute_count
+            result["onchain_dispute_count"] = dispute_count()
+            result["onchain_status"] = (
+                "read-only integration verified; write path queued for v0.2"
+            )
+        except Exception as e:  # noqa: BLE001
+            result["onchain_status"] = f"read-only check failed: {e}"
+    else:
+        result["onchain_status"] = (
             "court has no on-chain config (ARC_RPC_URL / PNEUMA_COURT_ADDRESS"
             " / COURT_FINALIZER_PRIVATE_KEY) — running anet-only"
         )
-        return result
-
-    try:
-        dispute_id = case.get("disputeId")
-        call_id = case.get("callId")
-        file_tx: str | None = None
-
-        if dispute_id is None:
-            # Court opens the dispute on the caller's behalf — caller does not
-            # need an EVM wallet. Gas comes from the court's finalizer key.
-            if call_id is None:
-                raise RuntimeError(
-                    "case missing both disputeId and callId — cannot open"
-                    " dispute on-chain. Provide one of them."
-                )
-            evidence = case.get("evidence", "")
-            dispute_id, file_tx = file_dispute(int(call_id), evidence)
-
-        finalize_tx = finalize_dispute(int(dispute_id), result["verdict"])
-        result["dispute_id"] = int(dispute_id)
-        result["file_tx"] = file_tx
-        result["tx_hash"] = finalize_tx
-    except Exception as e:  # noqa: BLE001
-        # On-chain failure is non-fatal: the deliberation already produced a
-        # binding verdict over anet — caller still gets a usable response.
-        result["error"] = f"on-chain finalize failed: {e}"
 
     return result
