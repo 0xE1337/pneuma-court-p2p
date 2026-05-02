@@ -37,7 +37,7 @@ write_config() {
   "bootstrap_peers": [$boot_csv],
   "api_port": $api,
   "relay_enabled": false,
-  "topics_auto_join": ["/anet/ans", "/anet/credits"],
+  "topics_auto_join": ["/anet/ans", "/anet/credits", "/anet/tasks"],
   "bt_dht": {"enabled": false},
   "overlay": {"enabled": false}
 }

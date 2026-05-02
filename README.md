@@ -362,6 +362,28 @@ the赛道's stated themes — 群体智能 (multi-juror collective reasoning),
       `testnet.arcscan.app`. **This contract is independent of the
       parent Pneuma Protocol's SkillRegistry**; the court repo is
       self-contained for the sponsor track.
+- [x] **🐚 Shell flow verified end-to-end** (`examples/shell_flow_via_task.py`) —
+      caller publishes a 100🐚 task, court daemon claims and submits the
+      verdict, caller accepts → 100🐚 settles to court daemon. Wallet
+      delta confirmed live: caller 5000→4895 (-105 = 100 reward + 5
+      escrow fee), court 5000→5100 (+100). `anet credits events` shows
+      `reward.task_complete  100  Task reward for task a49c3edd-…` —
+      the audit row is the protocol-level proof that anet's TASK system
+      actually moves 🐚 between daemons. The svc layer's `cost_model.
+      per_call` is metadata only; the task layer is where 🐚 actually
+      flows. (Both layers coexist — see "Economic model" below.)
+- [x] **Public-mesh persistent court** (`scripts/serve-public-court.sh`) —
+      a one-command launcher that boots a default-config daemon on the
+      global anet mesh and registers all four services there. Run
+      `bash scripts/serve-public-court.sh start` and any anet user
+      anywhere can `anet svc discover --skill=dispute-court` and find
+      this team's court live.
+- [x] **External-juror onboarding documented** ([docs/joining-as-juror.md](docs/joining-as-juror.md))
+      — four-step guide for any third-party anet operator to mint
+      their own Soul NFT, boot their own daemon, run a juror
+      service tagged `court-juror`, and join the panel. Anyone in
+      the wider network can become a juror — 5🐚 per vote, reputation
+      stays with their Soul.
 
 ### Test ladder
 
