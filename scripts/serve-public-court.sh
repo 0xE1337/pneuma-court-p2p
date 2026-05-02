@@ -80,6 +80,9 @@ from court_agent._anet_client import SvcClient
 # they get + how to participate (see docs/joining-as-juror.md).
 SERVICES = [
     # name, primary skill tag, per_call, extra tags, description
+    ('pneuma-court-manifest', 'pneuma-court-manifest', 0,
+        ['protocol-doc', 'directory'],
+        'Protocol topology + caller flow as JSON — start here if you are new'),
     ('pneuma-soul-mint',  'soul-mint',     10,
         ['identity', 'sponsored-mint', 'arc-testnet'],
         'Sponsored Pneuma Soul NFT minting (operator pays gas)'),
@@ -109,16 +112,20 @@ with SvcClient() as svc:
         except Exception:
             pass
         try:
-            resp = svc.register(
+            register_kwargs = dict(
                 name=name,
                 endpoint='http://127.0.0.1:8088',  # placeholder; advertised metadata only
                 paths=['/health'],
                 modes=['rr'],
-                per_call=per_call,
                 tags=[primary_skill, *extra_tags, 'pneuma-court-p2p', 'public'],
                 description=f'{desc} — github.com/0xE1337/pneuma-court-p2p',
                 health_check='/health',
             )
+            if per_call <= 0:
+                register_kwargs['free'] = True
+            else:
+                register_kwargs['per_call'] = per_call
+            resp = svc.register(**register_kwargs)
             pub = (resp.get('ans') or {}).get('published')
             print(f'  ✓ {name:<22s} skill={primary_skill:<14s} per_call={per_call:<3d}🐚  ans.published={pub}')
         except Exception as e:
