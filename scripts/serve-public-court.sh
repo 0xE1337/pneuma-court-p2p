@@ -61,33 +61,66 @@ cmd_start() {
   # Real lifecycle (jurors actually voting) requires running the demo's
   # 5-daemon mesh too — this script's job is just public discoverability.
   echo
-  echo "▸ registering pneuma-court on global ANS …"
+  echo "▸ registering full Pneuma Court protocol surface on global ANS …"
   HOME="$PUB_HOME" .venv/bin/python <<'PY'
 import os, sys
 os.environ['ANET_HOME'] = os.environ['HOME']
 sys.path.insert(0, 'src')
 from court_agent._anet_client import SvcClient
 
+# Core 4 (court + 3 jurors) + 2 protocol-prerequisite services
+# (Soul mint and CourtEscrow). External agents discover the FULL stack
+# via anet ANS:
+#   anet svc discover --skill=soul-mint        → identity layer
+#   anet svc discover --skill=escrow           → enforcement layer
+#   anet svc discover --skill=dispute-court    → reasoning layer
+#   anet svc discover --skill=court-juror      → panel pool
+#
+# Each service's tags + description tell external agents exactly what
+# they get + how to participate (see docs/joining-as-juror.md).
+SERVICES = [
+    # name, primary skill tag, per_call, extra tags, description
+    ('pneuma-soul-mint',  'soul-mint',     10,
+        ['identity', 'sponsored-mint', 'arc-testnet'],
+        'Sponsored Pneuma Soul NFT minting (operator pays gas)'),
+    ('pneuma-court-escrow', 'escrow',       5,
+        ['stake-and-slash', 'onchain', 'arc-testnet'],
+        'On-chain stake/escrow/dispute view + tx-quote helper'),
+    ('pneuma-court',      'dispute-court', 20,
+        ['multi-juror', 'court-juror', 'arbitration'],
+        'Multi-juror dispute resolution (3 Soul-anchored jurors)'),
+    ('economic-juror',    'economic-juror', 5,
+        ['court-juror', 'juror'],
+        'Economic-dispute juror (commercial-arbitration prompt)'),
+    ('legal-juror',       'legal-juror',    5,
+        ['court-juror', 'juror'],
+        'Legal-procedure juror (statutory-construction prompt)'),
+    ('fairness-juror',    'fairness-juror', 5,
+        ['court-juror', 'juror'],
+        'Fairness/equity juror (good-faith / unjust-enrichment prompt)'),
+]
+
 with SvcClient() as svc:
-    for name, skill_tag in [
-        ('pneuma-court',     'dispute-court'),
-        ('economic-juror',   'economic-juror'),
-        ('legal-juror',      'legal-juror'),
-        ('fairness-juror',   'fairness-juror'),
-    ]:
+    for name, primary_skill, per_call, extra_tags, desc in SERVICES:
+        # idempotent: try unregister so re-runs don't choke on
+        # 'service already registered'
+        try:
+            svc.unregister(name)
+        except Exception:
+            pass
         try:
             resp = svc.register(
                 name=name,
-                endpoint='http://127.0.0.1:8088',  # placeholder; clients won't actually call
+                endpoint='http://127.0.0.1:8088',  # placeholder; advertised metadata only
                 paths=['/health'],
                 modes=['rr'],
-                per_call=20 if name == 'pneuma-court' else 5,
-                tags=[skill_tag, 'court-juror', 'pneuma-court-p2p', 'public'],
-                description=f'pneuma-court-p2p {name} (public listing — see github.com/0xE1337/pneuma-court-p2p)',
+                per_call=per_call,
+                tags=[primary_skill, *extra_tags, 'pneuma-court-p2p', 'public'],
+                description=f'{desc} — github.com/0xE1337/pneuma-court-p2p',
                 health_check='/health',
             )
             pub = (resp.get('ans') or {}).get('published')
-            print(f'  ✓ {name} registered  ans.published={pub}')
+            print(f'  ✓ {name:<22s} skill={primary_skill:<14s} per_call={per_call:<3d}🐚  ans.published={pub}')
         except Exception as e:
             print(f'  ✗ {name} register failed: {e}')
 PY
