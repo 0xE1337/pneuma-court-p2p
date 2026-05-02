@@ -233,6 +233,22 @@ PROTOCOL_DOC = {
             "anet_primitives_used": ["svc.register"],
             "chain_primitives_used": ["USDC.transferWithAuthorization (EIP-3009 / FiatTokenV2)"],
         },
+        {
+            "name": "ERC-6551 TBA-routed CourtEscrow lifecycle (non-custodial)",
+            "script": "examples/tba_signed_lifecycle.py",
+            "command": ".venv/bin/python examples/tba_signed_lifecycle.py",
+            "purpose": "Closes the loop on the parent project's identity-and-authority unification. Caller is an agent's ERC-6551 Token-Bound Account, bound to a Soul NFT. The Soul-owner EOA signs TBA.execute() → CourtEscrow sees the TBA address as msg.sender. fileDispute works without any meta-tx relayer because the agent's TBA *is* the on-chain wallet.",
+            "verified_at": "2026-05-02",
+            "evidence": [
+                {"type": "soul_id", "tokenId": 14, "tba_address": "0x2Ac66faCEaE863dDC87E34D3039776f59177842D"},
+                {"type": "msg_sender_assertion", "claim": "c.caller on-chain == TBA address", "verified_live": True},
+                {"type": "case_outcome", "case_id": 2, "outcome": "PlaintiffWins"},
+                {"type": "balance_delta", "from_addr": "TBA 0x2Ac66f…7842D", "before": "0.000000 USDC", "after": "2.000000 USDC", "note": "1.50 funded - 1.00 escrowed + 1.00 refund + 0.50 slash payout"},
+                {"type": "tx_trail", "soul_mint": "0x72f0cde3927f6c1bfadb3b139176179c011bfb999f80a68904ae19ad149285f0", "tba_escrow": "0x9bc27c3dee6b67220ebfb478c8c0c05d4f5430dee0dfb0023ca99866da85c559", "tba_dispute": "0x5f66784bede2aac201334f52958bf3efa541cb42e91393c9e8870e35f753e5e1", "court_resolve": "0xa66dbe8567c5736c1683980ec4b1a7f42497a92b8c4af74a63bdde58aff3d7db"},
+            ],
+            "anet_primitives_used": [],
+            "chain_primitives_used": ["SoulNFT.publicMint", "ERC-6551 TBA.execute (operation=CALL)", "CourtEscrow.escrowCall", "CourtEscrow.fileDispute", "CourtEscrow.resolveDispute"],
+        },
     ],
 
     "external_juror_onboarding": "https://github.com/0xE1337/pneuma-court-p2p/blob/main/docs/joining-as-juror.md",

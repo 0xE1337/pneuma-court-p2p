@@ -41,6 +41,7 @@ verify on `testnet.arcscan.app`.
 | **CourtEscrow on-chain enforcement** ([escrow_lifecycle.py](examples/escrow_lifecycle.py)) | Full stake → escrow → dispute → resolve(plaintiffWins) lifecycle on Arc Testnet — **4 real txs** | `python examples/escrow_lifecycle.py` | Contract [`0x72E945cD…7dd8d0`](https://testnet.arcscan.app/address/0x72E945cD718E6A5b36C34896343a436D3e7dd8d0); caller +1.50 USDC (1.00 refund + 50% × 1.00 slash); provider stake 5.00 → 4.50; case=PlaintiffWins |
 | **🐚 Shell real settlement** ([shell_flow_via_task.py](examples/shell_flow_via_task.py)) | Demonstrates 🐚 actually moves between daemons via anet TASK system (not via `svc.cost_model.per_call` which is metadata only) | `python examples/shell_flow_via_task.py` | caller wallet 5000 → 4895 (-105); court wallet 5000 → 5100 (+100); audit row `reward.task_complete 100` |
 | **x402 Rail — REAL USDC** ⭐ ([x402_real_money_demo.py](examples/x402_real_money_demo.py)) | Brand-new ephemeral wallet receives real USDC purely from an off-chain signature; rail relayer pays gas; Coinbase x402 + EIP-3009 / FiatTokenV2 | `court-x402-rail &`<br>`python examples/x402_real_money_demo.py` | Tx [`0x14dff7f4…386e8c`](https://testnet.arcscan.app/tx/0x14dff7f46b9f03ae2761589df3bfbf9387966d17d115d462760997b5ee386e8c); Bob 0.000000 → 0.010000 USDC; caller signed off-chain only (no gas) |
+| **ERC-6551 TBA-routed lifecycle** 🆕 ([tba_signed_lifecycle.py](examples/tba_signed_lifecycle.py)) | Agent's Soul-bound TBA acts as on-chain caller throughout: TBA.execute() routes escrow + fileDispute so msg.sender = TBA. **Closes the loop on Soul (identity) + TBA (authority) — no meta-tx relayer needed**, agent's TBA *is* the wallet | `python examples/tba_signed_lifecycle.py` | Soul #14, TBA `0x2Ac66f…7842D`; on-chain `c.caller == TBA` ✓; case 2 = PlaintiffWins; TBA balance 0 → 2.0 USDC (refund + slash); 7-tx trail incl. [escrow](https://testnet.arcscan.app/tx/0x9bc27c3dee6b67220ebfb478c8c0c05d4f5430dee0dfb0023ca99866da85c559) [dispute](https://testnet.arcscan.app/tx/0x5f66784bede2aac201334f52958bf3efa541cb42e91393c9e8870e35f753e5e1) [resolve](https://testnet.arcscan.app/tx/0xa66dbe8567c5736c1683980ec4b1a7f42497a92b8c4af74a63bdde58aff3d7db) |
 
 > External agents can also pull this list as JSON via
 > `GET /protocol → verified_demos[]` from the manifest service —
@@ -292,6 +293,56 @@ on-chain enforcement is opt-in.
 See [docs/onchain-bonus.md](docs/onchain-bonus.md) for the contract
 ABI summary and [docs/protocol-flow.md](docs/protocol-flow.md) for the
 full sequence diagram covering both happy and unhappy paths.
+
+---
+
+## "Does the court have enforcement power?" — yes, in a specific scope
+
+A common critique of agent courts is "the verdict is just JSON, who
+enforces it?" This project has a concrete answer: **the smart contract
+enforces it autonomously, within the opt-in escrow perimeter.**
+
+```
+┌─── Inside our scope (cryptographically enforced) ─────────────┐
+│  Provider USDC staked in CourtEscrow      ← we slash this     │
+│  Caller USDC escrowed in CourtEscrow      ← we refund/release │
+│  Slash + refund executes on `resolveDispute()` — no human in  │
+│  the loop, no court bailiff, just one signed tx               │
+└────────────────────────────────────────────────────────────────┘
+
+           │  edge of authority  ───────────────────────▶
+           ▼
+
+┌─── Outside our scope (no authority, by design) ───────────────┐
+│  Provider's other USDC not staked here                        │
+│  Cross-chain assets / off-chain bank accounts                 │
+│  Real-world legal recognition                                 │
+│  Anyone who didn't opt in to CourtEscrow                      │
+└────────────────────────────────────────────────────────────────┘
+```
+
+**This is the same model as Kleros, Aragon Court, Polymarket** and every
+other web3 dispute system: enforcement = autonomous slashing of opt-in
+collateral. Providers stake **voluntarily** because the slashable USDC
+is the price of being trusted; callers route through CourtEscrow
+**voluntarily** because the verdict carries weight only against
+willing-to-stake providers.
+
+**Verified slash on chain**: `examples/escrow_lifecycle.py` (operator
+demo) and `examples/tba_signed_lifecycle.py` (TBA-routed demo) both
+end with provider stake reduced by 50% of the disputed amount and
+caller refunded. **The slash is not advisory — the contract executes
+it autonomously the moment court signs `resolveDispute`.**
+
+What we do **not** claim:
+- We are not a state court; we issue no warrants, hold no jurisdiction
+- We cannot freeze assets outside CourtEscrow
+- We cannot enforce against an agent that never staked with us
+
+This is feature, not bug — building a trust-minimized protocol means
+the protocol's authority is bounded by what participants chose to lock
+in. Mission creep beyond the perimeter is what makes web3 governance
+fail.
 
 ---
 
@@ -576,7 +627,7 @@ the赛道's stated themes — 群体智能 (multi-juror collective reasoning),
 | Real-Claude 3-juror E2E (synchronous) | ⚠️ partial | clipped by anet's 30s svc-call client timeout — `JUROR_MOCK_MODE=1` for fast demos. anet brain mode side-steps this for the multi-juror path (✅ row below); v0.2 async/poll handoff queued for the legacy svc-call path |
 | **anet brain (collective-reasoning) consensus** | ✅ | **public** anet — brain `b49ffc17-…`, 4 members, 3 units, consensus PLAINTIFF (2:1) via `brain deliberate`; see [`examples/brain_court_demo.py`](examples/brain_court_demo.py) |
 | **CourtEscrow lifecycle (4 on-chain txs)** | ✅ | **public** Arc Testnet — `stake → escrow → fileDispute → resolveDispute(plaintiff)`; caller +1.50 USDC, provider stake 5.00 → 4.50; see [`examples/escrow_lifecycle.py`](examples/escrow_lifecycle.py) |
-| Caller-signed `fileDispute` (non-custodial mode) | ⚠️ deferred | `CourtEscrow.fileDispute` requires `msg.sender == plaintiff`; current demo signs as court operator. Production caller flow needs in-agent web3 signing or an EIP-2771 meta-tx relayer — queued for v0.2 |
+| **Caller-signed `fileDispute` via ERC-6551 TBA** | ✅ | **public** Arc Testnet — Soul #14, TBA `0x2Ac66fa…7842D` filed dispute via `TBA.execute()`; on-chain `c.caller == TBA` verified live; see [`examples/tba_signed_lifecycle.py`](examples/tba_signed_lifecycle.py) — agent's TBA *is* the wallet, no meta-tx relayer needed |
 | **🐚 Shell flow via anet TASK system** | ✅ | **public** anet — `examples/shell_flow_via_task.py`: caller wallet 5000 → 4895 (-105), court wallet 5000 → 5100 (+100), `credits.events: reward.task_complete 100`. The svc layer's `cost_model.per_call` is metadata only; the task system (publish/work-on/accept) is where 🐚 actually moves between daemons |
 
 ### Economic model (designed)
