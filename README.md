@@ -301,7 +301,7 @@ Three reasons that make centralized impossible, not just inconvenient:
 
 1. **Juror independence.** A single backend running all 3 jurors collapses the multi-perspective premise. Real independence requires separate processes, separate API keys, separate operators.
 2. **Open marketplace of expertise.** Anyone with a Claude API key and a domain prompt can register a `<category>-juror` service. The court discovers them at runtime — the set of available expertise grows organically.
-3. **On-chain accountability.** Each juror call writes an `svc_call_log` row in their own daemon. Combined with the on-chain finalize, you get a fully auditable ruling — who voted, when, for how much, with the verdict cryptographically anchored.
+3. **On-chain accountability.** Each juror call writes an `svc_call_log` row in their own daemon, plus an anet brain unit that's preserved in the brain audit trail. Combined with the on-chain `CourtEscrow.resolveDispute` write, you get a fully auditable ruling — who voted, when, for how much, with the verdict cryptographically anchored.
 
 ---
 
@@ -452,12 +452,12 @@ the赛道's stated themes — 群体智能 (multi-juror collective reasoning),
 - [x] `proxy.py` discover + parallel fan-out + aggregate (anet-only)
 - [x] `chain.py` read-only on-chain integration (RPC + ABI + wallet verified live)
 - [x] `verdict.py` majority-vote + robust JSON-response parser
-- [x] `scripts/four-node.sh` 4-daemon orchestration
+- [x] `scripts/four-node.sh` daemon orchestration (originally 4 daemons; now spawns 5 — court + 3 jurors + caller — script name kept for continuity)
 - [x] `scripts/demo.sh` one-shot full demo
 - [x] `examples/run_case.py` caller stub
 - [x] Vendored `_anet_client.py` SvcClient (starter kit's SDK is unpublished)
 - [x] Local `claude` CLI integration — no `ANTHROPIC_API_KEY` needed
-- [x] End-to-end run: 4-daemon mesh + court + 3 jurors register + dispatch + aggregate + caller receives verdict (mock-juror fast path)
+- [x] End-to-end run: 5-daemon mesh + court + 3 jurors register + dispatch + aggregate + caller receives verdict (mock-juror fast path)
 - [x] On-chain integration verified live against Arc Testnet:
       `chain_id=5042002`, `block=39976495+`, `disputeCount()=0`,
       ABI matches deployed bytecode, finalizer wallet funded (97 USDC)
@@ -509,10 +509,12 @@ the赛道's stated themes — 群体智能 (multi-juror collective reasoning),
       flows. (Both layers coexist — see "Economic model" below.)
 - [x] **Public-mesh persistent court** (`scripts/serve-public-court.sh`) —
       a one-command launcher that boots a default-config daemon on the
-      global anet mesh and registers all four services there. Run
-      `bash scripts/serve-public-court.sh start` and any anet user
-      anywhere can `anet svc discover --skill=dispute-court` and find
-      this team's court live.
+      global anet mesh and registers all 8 services there (later expanded
+      from the original 4: now manifest + soul-mint + escrow + x402-rail
+      + court + 3 jurors). Run `bash scripts/serve-public-court.sh start`
+      and any anet user anywhere can `anet svc discover --skill=dispute-court`
+      (or `--skill=x402`, `--skill=escrow`, etc.) and find this team's
+      services live.
 - [x] **External-juror onboarding documented** ([docs/joining-as-juror.md](docs/joining-as-juror.md))
       — four-step guide for any third-party anet operator to mint
       their own Soul NFT, boot their own daemon, run a juror
@@ -571,9 +573,11 @@ the赛道's stated themes — 群体智能 (multi-juror collective reasoning),
 | 5-daemon mesh + court + 3 jurors + caller | ✅ | local loopback |
 | Service discoverable on **GLOBAL anet ANS** | ✅ | **public** anet |
 | **x402 EIP-3009 USDC payment to fresh wallet** | ✅ | **public** Arc Testnet — tx `0x14dff7f4…386e8c` |
-| Real-Claude 3-juror E2E (synchronous) | ⚠️ partial | clipped by anet's 30s svc-call client timeout — `JUROR_MOCK_MODE=1` for fast demos; v0.2 async/poll handoff queued |
-| On-chain `fileDispute → finalize` write | ❌ deferred | requires plaintiff-as-msg.sender — meta-tx relayer queued for v0.2 |
-| 🐚 Shell wallet flow between daemons | ⚠️ design-only | Each juror is registered with `per_call=5🐚` and the court with `per_call=20🐚`, so a successful case is *designed* to pay 20 → court → 5×3 → jurors with court netting +5 fee. **In our isolated 5-daemon loopback the wallet delta is not observed live** (balance stays at the 5000🐚 default and `anet svc audit` returns empty). The data path (HTTP body / verdict / Soul attribution) works end-to-end; the credit-gossip layer in this loopback config does not seem to settle. Likely either a per-call deposit setting we haven't surfaced or the `/anet/credits` topic gossip needing a non-loopback overlay. **Public-mesh test (`scripts/verify-public-mesh.sh`) confirmed `ans.published=True`** which is the documented prerequisite for billing to engage in production. v0.2 will instrument this. |
+| Real-Claude 3-juror E2E (synchronous) | ⚠️ partial | clipped by anet's 30s svc-call client timeout — `JUROR_MOCK_MODE=1` for fast demos. anet brain mode side-steps this for the multi-juror path (✅ row below); v0.2 async/poll handoff queued for the legacy svc-call path |
+| **anet brain (collective-reasoning) consensus** | ✅ | **public** anet — brain `b49ffc17-…`, 4 members, 3 units, consensus PLAINTIFF (2:1) via `brain deliberate`; see [`examples/brain_court_demo.py`](examples/brain_court_demo.py) |
+| **CourtEscrow lifecycle (4 on-chain txs)** | ✅ | **public** Arc Testnet — `stake → escrow → fileDispute → resolveDispute(plaintiff)`; caller +1.50 USDC, provider stake 5.00 → 4.50; see [`examples/escrow_lifecycle.py`](examples/escrow_lifecycle.py) |
+| Caller-signed `fileDispute` (non-custodial mode) | ⚠️ deferred | `CourtEscrow.fileDispute` requires `msg.sender == plaintiff`; current demo signs as court operator. Production caller flow needs in-agent web3 signing or an EIP-2771 meta-tx relayer — queued for v0.2 |
+| **🐚 Shell flow via anet TASK system** | ✅ | **public** anet — `examples/shell_flow_via_task.py`: caller wallet 5000 → 4895 (-105), court wallet 5000 → 5100 (+100), `credits.events: reward.task_complete 100`. The svc layer's `cost_model.per_call` is metadata only; the task system (publish/work-on/accept) is where 🐚 actually moves between daemons |
 
 ### Economic model (designed)
 
