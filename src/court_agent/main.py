@@ -31,8 +31,25 @@ def meta() -> dict[str, object]:
         "name": NAME,
         "version": "0.1.0",
         "skill": "dispute-court",
-        "calls_into": ["economic-juror", "legal-juror", "fairness-juror"],
-        "writes_onchain": "PneumaCourt @ Arc Testnet",
+        "description": (
+            "Multi-juror dispute resolution. Court convenes 3 Soul-anchored "
+            "jurors via anet brain (collective reasoning), aggregates the "
+            "consensus verdict, and signs CourtEscrow.resolveDispute on "
+            "Arc Testnet for unhappy-path enforcement."
+        ),
+        "calls_into": ["economic-juror", "legal-juror", "fairness-juror", "court-juror (catch-all)"],
+        "writes_onchain": "CourtEscrow @ Arc Testnet (0x72E945cD718E6A5b36C34896343a436D3e7dd8d0)",
+        "endpoints": {
+            "POST /dispute": "submit a dispute body {caseId, callId, category, evidence, claims}; returns {verdict, jurors[], tx_hash, brain_audit_url}",
+            "GET /health":   "liveness probe",
+            "GET /meta":     "this introspection payload",
+        },
+        "complementary_services": [
+            "pneuma-court-manifest (start here for full topology)",
+            "pneuma-court-escrow (read on-chain state + tx-quote)",
+            "pneuma-x402-rail (per-call USDC payments via x402)",
+            "pneuma-soul-mint (mint a Soul + TBA wallet)",
+        ],
     }
 
 

@@ -30,7 +30,7 @@ import threading
 from typing import Optional
 
 import uvicorn
-from fastapi import FastAPI, Header
+from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 
 from court_agent._register import register_until_ready
@@ -100,7 +100,7 @@ def cli() -> None:
 
     @app.post("/quote")
     async def quote(
-        req,
+        req: Request,
         x_agent_did: Optional[str] = Header(default=None, convert_underscores=True),
     ):
         # Body shape: {"action": "stake"|"escrow"|"file_dispute",

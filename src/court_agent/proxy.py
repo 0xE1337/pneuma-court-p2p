@@ -116,6 +116,49 @@ def _call_juror(svc: SvcClient, peer: dict[str, Any], case: dict[str, Any]) -> d
     }
 
 
+_LOCAL_JUROR_PORTS = {
+    "economic": int(os.environ.get("ECONOMIC_JUROR_PORT", "9101")),
+    "legal":    int(os.environ.get("LEGAL_JUROR_PORT", "9102")),
+    "fairness": int(os.environ.get("FAIRNESS_JUROR_PORT", "9103")),
+}
+
+
+def _call_local_juror(category: str, case: dict[str, Any]) -> dict[str, Any] | None:
+    """Direct localhost HTTP to our own juror backend — bypasses anet svc
+    dispatch entirely. Used when jurors are co-located with the court (the
+    common case in our 8-service stack)."""
+    import httpx
+
+    port = _LOCAL_JUROR_PORTS.get(category)
+    if not port:
+        return None
+    try:
+        with httpx.Client(timeout=15.0) as c:
+            r = c.post(f"http://127.0.0.1:{port}/vote", json=case)
+        if r.status_code != 200:
+            return {
+                "juror": f"{category}-juror",
+                "peer_id": "local",
+                "verdict": "ABSTAIN",
+                "reasoning": f"local /vote returned {r.status_code}: {r.text[:200]}",
+            }
+        body = r.json()
+        return {
+            "juror": f"{category}-juror",
+            "peer_id": "local",
+            "verdict": body.get("verdict", "ABSTAIN"),
+            "reasoning": body.get("reasoning", ""),
+            "soul": body.get("soul"),
+        }
+    except Exception as e:  # noqa: BLE001
+        return {
+            "juror": f"{category}-juror",
+            "peer_id": "local",
+            "verdict": "ABSTAIN",
+            "reasoning": f"local call failed: {e}",
+        }
+
+
 def deliberate(case: dict[str, Any], *, caller_did: str | None) -> dict[str, Any]:
     """Run the full deliberation pipeline.
 
@@ -125,6 +168,11 @@ def deliberate(case: dict[str, Any], *, caller_did: str | None) -> dict[str, Any
             "evidence": str,
             "claims": {"plaintiff": str, "defendant": str},
         }
+
+    Default dispatch model: call all 3 local juror backends directly (they
+    co-locate with the court in our 8-service stack). Set
+    `COURT_DISTRIBUTED=1` in env to fall back to anet svc.discover + svc.call
+    fan-out for cross-operator deliberation (the original behavior).
 
     Returns the aggregated result including individual juror votes, the final
     majority verdict, and (best-effort) the on-chain finalize tx hash.
@@ -142,19 +190,37 @@ def deliberate(case: dict[str, Any], *, caller_did: str | None) -> dict[str, Any
         "error": None,
     }
 
-    with SvcClient(base_url=ANET_BASE_URL) as svc:
-        peers = _find_jurors(svc, category)
-        if not peers:
-            result["error"] = f"no jurors found for category={category!r}"
-            return result
+    distributed = os.environ.get("COURT_DISTRIBUTED") == "1"
 
-        targets = peers[:MIN_JURORS]
-        with ThreadPoolExecutor(max_workers=max(1, len(targets))) as ex:
-            futures = [ex.submit(_call_juror, svc, p, case) for p in targets]
-            votes = [f.result() for f in as_completed(futures)]
-
+    if not distributed:
+        # LOCAL-FIRST: call all 3 local juror backends in parallel. This is
+        # the production-correct model when jurors are co-located, and it
+        # avoids anet svc.discover routing to dead/foreign peers for the
+        # same skill tag.
+        with ThreadPoolExecutor(max_workers=3) as ex:
+            futures = {
+                ex.submit(_call_local_juror, cat, case): cat
+                for cat in ("economic", "legal", "fairness")
+            }
+            votes = [f.result() for f in as_completed(futures) if f.result()]
         result["jurors"] = votes
         result["verdict"] = majority_vote(v["verdict"] for v in votes)
+        result["dispatch_mode"] = "local-direct"
+    else:
+        with SvcClient(base_url=ANET_BASE_URL) as svc:
+            peers = _find_jurors(svc, category)
+            if not peers:
+                result["error"] = f"no jurors found for category={category!r}"
+                return result
+
+            targets = peers[:MIN_JURORS]
+            with ThreadPoolExecutor(max_workers=max(1, len(targets))) as ex:
+                futures = [ex.submit(_call_juror, svc, p, case) for p in targets]
+                votes = [f.result() for f in as_completed(futures)]
+
+            result["jurors"] = votes
+            result["verdict"] = majority_vote(v["verdict"] for v in votes)
+            result["dispatch_mode"] = "anet-svc-distributed"
 
     # v0.1 ships anet-only deliberation. The on-chain write path is held back
     # because PneumaCourt.fileDispute requires msg.sender to be the original
