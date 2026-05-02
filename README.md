@@ -350,6 +350,18 @@ the赛道's stated themes — 群体智能 (multi-juror collective reasoning),
       successfully resolved the registered service. This is not the
       isolated 5-daemon loopback used by the demo — it's the real
       Agent Network mesh.
+- [x] **On-chain enforcement loop end-to-end** (`examples/escrow_lifecycle
+      .py`) — deployed our own `CourtEscrow` contract at
+      `0x72E945cD718E6A5b36C34896343a436D3e7dd8d0` on Arc Testnet and
+      ran the full stake → escrow → dispute → resolve → slash cycle live:
+        provider stakes 5 USDC ⇒ caller escrows 1 USDC ⇒ caller files
+        dispute ⇒ court resolves (plaintiff wins) ⇒ caller +1.50 USDC
+        (escrow refund 1.00 + slash 50% × 1.00 locked stake = 0.50)
+        ⇒ provider stake 5.00 → 4.50, case=PlaintiffWins, call=Resolved.
+      All 4 transactions on chain — verifiable on
+      `testnet.arcscan.app`. **This contract is independent of the
+      parent Pneuma Protocol's SkillRegistry**; the court repo is
+      self-contained for the sponsor track.
 
 ### Test ladder
 
