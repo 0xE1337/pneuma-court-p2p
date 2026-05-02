@@ -29,7 +29,35 @@ with on-chain enforcement on Arc Testnet for the unhappy path.
 
 ---
 
-## ✅ End-to-end verified — 4 demos with live evidence
+## 🏪 The store front — find us on Agent Network in one command
+
+```bash
+# 1. Get the protocol map as JSON (start here if you're a new agent)
+anet svc discover --skill pneuma-court-manifest
+anet svc call <peer-id> pneuma-court-manifest /protocol --method GET
+
+# 2. Or jump straight to the layer you want:
+anet svc discover --skill soul-mint        # mint a chain-anchored agent identity
+anet svc discover --skill x402             # pay another agent in REAL USDC per call
+anet svc discover --skill escrow           # check on-chain stake / case state
+anet svc discover --skill dispute-court    # file a dispute, get a multi-juror verdict
+anet svc discover --skill court-juror      # join the panel as a third-party juror
+```
+
+| Service (8 on global ANS) | What you get | Price |
+|---|---|---|
+| **`pneuma-court-manifest`** | `GET /protocol` returns the entire 8-service topology + 8-step caller flow + dependency graph + `verified_demos[]` (machine-readable proof of every demo we've run) | free |
+| **`pneuma-soul-mint`** | Sponsored Soul NFT mint — operator pays gas, you get a Soul (ERC-721) + auto-derived TBA (ERC-6551 wallet) on Arc Testnet | 10 🐚 |
+| **`pneuma-x402-rail`** ⭐ | Pay any other anet agent REAL USDC (not 🐚) per call via Coinbase x402 + EIP-3009. Caller signs off-chain, rail relays on-chain — anyone-can-submit | 2 🐚 |
+| **`pneuma-court-escrow`** | Read on-chain `stake` / `escrowCall` / `dispute` state on Arc Testnet; `POST /quote` returns the tx-build payload for the caller to sign themselves (non-custodial) | 5 🐚 |
+| **`pneuma-court`** | File a dispute, court convenes a 3-juror panel via anet brain, returns consensus verdict + on-chain `resolveDispute` if requested | 20 🐚 |
+| **`economic-juror` / `legal-juror` / `fairness-juror`** | Specialist juror agents — each Soul-anchored; you can also register your own `<category>-juror` to join the panel | 5 🐚 each |
+
+**Live state** (rendered hourly): see [agentnetwork.org.cn/hackathon.html](https://agentnetwork.org.cn/hackathon.html) — find us in the **生态矩阵 / Curated Clusters** section as "Pneuma Court".
+
+---
+
+## ✅ End-to-end verified — 5 demos with live evidence
 
 Every claim below is backed by a runnable script that produced an
 on-chain transaction or an anet-network observable. Click any tx hash to
