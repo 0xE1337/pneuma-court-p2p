@@ -384,6 +384,30 @@ the赛道's stated themes — 群体智能 (multi-juror collective reasoning),
       service tagged `court-juror`, and join the panel. Anyone in
       the wider network can become a juror — 5🐚 per vote, reputation
       stays with their Soul.
+- [x] **anet BRAIN (collective-reasoning room) integration**
+      ([examples/brain_court_demo.py](examples/brain_court_demo.py)) —
+      The court no longer hand-rolls multi-juror dispatch via parallel
+      svc.call. Instead: caller publishes a 100🐚 task → court opens
+      a brain associated with the task → all 3 jurors `brain join` →
+      each posts a structured unit `(case-N, verdict, PLAINTIFF|
+      DEFENDANT, confidence)` → court runs `brain deliberate` →
+      anet aggregates a consensus → court submits the deliverable on
+      the task → caller accepts → 100🐚 settles. Live verified:
+      brain `b49ffc17-…` with 4 members and 3 units, anet's
+      deliberation chose PLAINTIFF, caller -105🐚, court +100🐚,
+      credits.events shows `reward.task_complete 100`. This is
+      anet-native blackboard pattern (the right way) — full
+      `复用 anet 能力` for the sponsor track.
+
+- [x] **7-service protocol surface on global ANS**
+      ([scripts/serve-public-court.sh](scripts/serve-public-court.sh)) —
+      one launcher registers `pneuma-court-manifest`, `pneuma-soul-mint`,
+      `pneuma-court-escrow`, `pneuma-court`, `economic-juror`,
+      `legal-juror`, `fairness-juror` on the public mesh. Manifest
+      service exposes `GET /protocol` returning the full protocol
+      topology + 8-step caller flow + service dependency graph as
+      JSON. External agents can read the entire composition without
+      touching the README.
 
 ### Test ladder
 
