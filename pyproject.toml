@@ -42,6 +42,7 @@ court-juror = "court_agent.jurors.cli:cli"
 court-soul-svc = "court_agent.identity_service:cli"
 court-escrow-svc = "court_agent.escrow_service:cli"
 court-manifest-svc = "court_agent.manifest_service:cli"
+court-x402-rail = "court_agent.x402_rail:cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]

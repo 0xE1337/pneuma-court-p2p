@@ -409,6 +409,22 @@ the赛道's stated themes — 群体智能 (multi-juror collective reasoning),
       JSON. External agents can read the entire composition without
       touching the README.
 
+- [x] **x402 Rail — agents earn REAL USDC** (`pneuma-x402-rail` /
+      [src/court_agent/x402_rail.py](src/court_agent/x402_rail.py),
+      [examples/x402_real_money_demo.py](examples/x402_real_money_demo.py)) —
+      Pneuma's **central-bank layer**: agents on Agent Network can now
+      pay each other in REAL USDC (not 🐚 Shell credits) via Coinbase
+      x402 + EIP-3009 `transferWithAuthorization`. The rail acts as a
+      gas relayer: caller signs an off-chain authorization, rail
+      submits on-chain, recipient gets paid directly (anyone-can-submit
+      design — no escrow, no intermediary holding). Live verified on
+      Arc Testnet: Alice (funded) signs 0.01 USDC → Bob (brand new
+      wallet, never funded) → on-chain tx
+      [`0x14dff7f4...386e8c`](https://testnet.arcscan.app/tx/0x14dff7f46b9f03ae2761589df3bfbf9387966d17d115d462760997b5ee386e8c)
+      → Bob's USDC balance 0.000000 → 0.010000.
+      Pairs with the escrow layer: **escrow for SLA-bound work, x402
+      for per-call micropayments**. Total: **8 services on global ANS**.
+
 ### Test ladder
 
 | Layer | Status | Network |
@@ -419,6 +435,7 @@ the赛道's stated themes — 群体智能 (multi-juror collective reasoning),
 | `agentnetwork.org.cn` mgmt API self-register | ✅ | **public** sponsor backend |
 | 5-daemon mesh + court + 3 jurors + caller | ✅ | local loopback |
 | Service discoverable on **GLOBAL anet ANS** | ✅ | **public** anet |
+| **x402 EIP-3009 USDC payment to fresh wallet** | ✅ | **public** Arc Testnet — tx `0x14dff7f4…386e8c` |
 | Real-Claude 3-juror E2E (synchronous) | ⚠️ partial | clipped by anet's 30s svc-call client timeout — `JUROR_MOCK_MODE=1` for fast demos; v0.2 async/poll handoff queued |
 | On-chain `fileDispute → finalize` write | ❌ deferred | requires plaintiff-as-msg.sender — meta-tx relayer queued for v0.2 |
 | 🐚 Shell wallet flow between daemons | ⚠️ design-only | Each juror is registered with `per_call=5🐚` and the court with `per_call=20🐚`, so a successful case is *designed* to pay 20 → court → 5×3 → jurors with court netting +5 fee. **In our isolated 5-daemon loopback the wallet delta is not observed live** (balance stays at the 5000🐚 default and `anet svc audit` returns empty). The data path (HTTP body / verdict / Soul attribution) works end-to-end; the credit-gossip layer in this loopback config does not seem to settle. Likely either a per-call deposit setting we haven't surfaced or the `/anet/credits` topic gossip needing a non-loopback overlay. **Public-mesh test (`scripts/verify-public-mesh.sh`) confirmed `ans.published=True`** which is the documented prerequisite for billing to engage in production. v0.2 will instrument this. |

@@ -60,6 +60,28 @@ PROTOCOL_DOC = {
             "skill_tags": ["dispute-court", "economic-juror", "legal-juror", "fairness-juror", "court-juror"],
             "ans_query": "anet svc discover --skill=dispute-court",
         },
+        {
+            "id": "settlement",
+            "purpose": (
+                "Central-bank layer: agent-to-agent REAL USDC payments via "
+                "Coinbase x402 (EIP-3009 transferWithAuthorization). Pairs "
+                "with the escrow layer — escrow for SLA-bound calls, x402 "
+                "for per-call micropayments."
+            ),
+            "service": "pneuma-x402-rail",
+            "skill_tag": "x402",
+            "ans_query": "anet svc discover --skill=x402",
+            "asset": os.environ.get(
+                "USDC_ADDRESS",
+                "0x3600000000000000000000000000000000000000",
+            ),
+            "scheme": "x402-eip3009",
+            "verified_demo": "examples/x402_real_money_demo.py",
+            "demo_tx_example": (
+                "Alice signs off-chain → rail submits → Bob (ephemeral wallet) "
+                "receives 0.01 USDC. Verified on Arc Testnet."
+            ),
+        },
     ],
 
     "caller_flow": [
@@ -138,6 +160,12 @@ PROTOCOL_DOC = {
         "economic-juror / legal-juror / fairness-juror": {
             "called_by": ["pneuma-court (during deliberation)"],
             "reasoning_engine": "local Claude CLI (no Anthropic API key needed)",
+        },
+        "pneuma-x402-rail": {
+            "called_by": ["any agent wanting to pay/receive REAL USDC per call"],
+            "writes_to_chain": ["USDC.transferWithAuthorization (EIP-3009)"],
+            "scheme": "x402-eip3009",
+            "complements": "pneuma-court-escrow (escrow for SLA, rail for per-call)",
         },
     },
 
