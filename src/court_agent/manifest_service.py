@@ -176,6 +176,65 @@ PROTOCOL_DOC = {
         "audit_event": "credits.events: reward.task_complete 100",
     },
 
+    # End-to-end verified demos with on-chain / anet evidence. Listed
+    # here so any external agent reading /protocol gets machine-readable
+    # proof of what runs without needing to clone the repo first.
+    "verified_demos": [
+        {
+            "name": "anet brain — collective-reasoning court",
+            "script": "examples/brain_court_demo.py",
+            "command": ".venv/bin/python examples/brain_court_demo.py",
+            "purpose": "3 jurors join an anet brain room, each posts a structured (case, verdict, confidence) unit; brain deliberate aggregates consensus; caller publishes a 100🐚 task that settles to court.",
+            "verified_at": "2026-05-02",
+            "evidence": [
+                {"type": "anet_brain", "id": "b49ffc17-613a-427a-86ed-1994c01d0415", "members": 4, "units": 3, "consensus": "PLAINTIFF (2:1)"},
+                {"type": "shell_settle", "caller_delta": "5000→4895 (-105)", "court_delta": "5000→5100 (+100)"},
+                {"type": "credits_event", "row": "reward.task_complete 100"},
+            ],
+            "anet_primitives_used": ["svc.discover", "task.publish/work-on/accept", "brain.open/join/unit/deliberate"],
+        },
+        {
+            "name": "CourtEscrow — full on-chain enforcement lifecycle",
+            "script": "examples/escrow_lifecycle.py",
+            "command": ".venv/bin/python examples/escrow_lifecycle.py",
+            "purpose": "stake → escrow → fileDispute → resolveDispute(plaintiffWins) end-to-end, verified live on Arc Testnet. 4 transactions on chain.",
+            "verified_at": "2026-05-01",
+            "evidence": [
+                {"type": "onchain_contract", "address": os.environ.get("COURT_ESCROW_ADDRESS", "0x72E945cD718E6A5b36C34896343a436D3e7dd8d0"), "explorer": "https://testnet.arcscan.app/address/0x72E945cD718E6A5b36C34896343a436D3e7dd8d0"},
+                {"type": "lifecycle_outcome", "result": "caller +1.50 USDC (escrow refund 1.00 + 50% slash 0.50); provider stake 5.00→4.50; case=PlaintiffWins, call=Resolved"},
+                {"type": "tx_count", "count": 4},
+            ],
+            "anet_primitives_used": [],
+            "chain_primitives_used": ["USDC.approve", "CourtEscrow.stake", "CourtEscrow.escrowCall", "CourtEscrow.fileDispute", "CourtEscrow.resolveDispute"],
+        },
+        {
+            "name": "🐚 Shell flow — real settlement via anet TASK",
+            "script": "examples/shell_flow_via_task.py",
+            "command": ".venv/bin/python examples/shell_flow_via_task.py",
+            "purpose": "Demonstrates that 🐚 Shell actually moves between daemons via anet's TASK system (publish/work-on/accept) — NOT via svc.cost_model.per_call which is metadata only.",
+            "verified_at": "2026-05-01",
+            "evidence": [
+                {"type": "shell_settle", "caller_delta": "5000→4895 (-105)", "court_delta": "5000→5100 (+100)"},
+                {"type": "credits_event", "row": "reward.task_complete 100 — Task reward for task a49c3edd-…"},
+            ],
+            "anet_primitives_used": ["task.publish", "task.work-on", "task.accept", "credits.events"],
+        },
+        {
+            "name": "x402 Rail — REAL USDC payment via Coinbase x402 + EIP-3009",
+            "script": "examples/x402_real_money_demo.py",
+            "command": ".venv/bin/court-x402-rail &  # rail on :9205\n.venv/bin/python examples/x402_real_money_demo.py",
+            "purpose": "Brand-new ephemeral wallet (never funded) receives real USDC purely via off-chain signature; the rail acts as gas relayer. Anyone-can-submit EIP-3009 design — caller pays no gas.",
+            "verified_at": "2026-05-02",
+            "evidence": [
+                {"type": "onchain_tx", "tx_hash": "0x14dff7f46b9f03ae2761589df3bfbf9387966d17d115d462760997b5ee386e8c", "explorer": "https://testnet.arcscan.app/tx/0x14dff7f46b9f03ae2761589df3bfbf9387966d17d115d462760997b5ee386e8c"},
+                {"type": "balance_delta", "from_addr": "Bob (ephemeral)", "before": "0.000000 USDC", "after": "0.010000 USDC"},
+                {"type": "gas_paid_by", "value": "rail relayer (caller signed off-chain only)"},
+            ],
+            "anet_primitives_used": ["svc.register"],
+            "chain_primitives_used": ["USDC.transferWithAuthorization (EIP-3009 / FiatTokenV2)"],
+        },
+    ],
+
     "external_juror_onboarding": "https://github.com/0xE1337/pneuma-court-p2p/blob/main/docs/joining-as-juror.md",
     "openclaw_install": "openclaw skills install pneuma-court",
     "license": "MIT",

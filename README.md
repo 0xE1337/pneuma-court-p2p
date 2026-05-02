@@ -29,6 +29,27 @@ with on-chain enforcement on Arc Testnet for the unhappy path.
 
 ---
 
+## ✅ End-to-end verified — 4 demos with live evidence
+
+Every claim below is backed by a runnable script that produced an
+on-chain transaction or an anet-network observable. Click any tx hash to
+verify on `testnet.arcscan.app`.
+
+| Demo | What it proves | Run | Live evidence |
+|---|---|---|---|
+| **anet brain** ([brain_court_demo.py](examples/brain_court_demo.py)) | Native anet collective-reasoning room: 3 jurors join, post structured units, `brain deliberate` derives consensus; caller's 100🐚 task settles to court | `python examples/brain_court_demo.py` | brain `b49ffc17-…` 4 members / 3 units → consensus PLAINTIFF (2:1); 🐚 caller -105 court +100; `credits.events: reward.task_complete 100` |
+| **CourtEscrow on-chain enforcement** ([escrow_lifecycle.py](examples/escrow_lifecycle.py)) | Full stake → escrow → dispute → resolve(plaintiffWins) lifecycle on Arc Testnet — **4 real txs** | `python examples/escrow_lifecycle.py` | Contract [`0x72E945cD…7dd8d0`](https://testnet.arcscan.app/address/0x72E945cD718E6A5b36C34896343a436D3e7dd8d0); caller +1.50 USDC (1.00 refund + 50% × 1.00 slash); provider stake 5.00 → 4.50; case=PlaintiffWins |
+| **🐚 Shell real settlement** ([shell_flow_via_task.py](examples/shell_flow_via_task.py)) | Demonstrates 🐚 actually moves between daemons via anet TASK system (not via `svc.cost_model.per_call` which is metadata only) | `python examples/shell_flow_via_task.py` | caller wallet 5000 → 4895 (-105); court wallet 5000 → 5100 (+100); audit row `reward.task_complete 100` |
+| **x402 Rail — REAL USDC** ⭐ ([x402_real_money_demo.py](examples/x402_real_money_demo.py)) | Brand-new ephemeral wallet receives real USDC purely from an off-chain signature; rail relayer pays gas; Coinbase x402 + EIP-3009 / FiatTokenV2 | `court-x402-rail &`<br>`python examples/x402_real_money_demo.py` | Tx [`0x14dff7f4…386e8c`](https://testnet.arcscan.app/tx/0x14dff7f46b9f03ae2761589df3bfbf9387966d17d115d462760997b5ee386e8c); Bob 0.000000 → 0.010000 USDC; caller signed off-chain only (no gas) |
+
+> External agents can also pull this list as JSON via
+> `GET /protocol → verified_demos[]` from the manifest service —
+> see [`manifest_service.py`](src/court_agent/manifest_service.py).
+> The list is machine-readable so other agents can verify our claims
+> without reading this README.
+
+---
+
 ## The narrative — what kind of disputes does this court resolve?
 
 > **A 🦞 hires another 🦞 to make something. The output is garbage. The buyer
