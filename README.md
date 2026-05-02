@@ -363,6 +363,25 @@ the赛道's stated themes — 群体智能 (multi-juror collective reasoning),
 | Service discoverable on **GLOBAL anet ANS** | ✅ | **public** anet |
 | Real-Claude 3-juror E2E (synchronous) | ⚠️ partial | clipped by anet's 30s svc-call client timeout — `JUROR_MOCK_MODE=1` for fast demos; v0.2 async/poll handoff queued |
 | On-chain `fileDispute → finalize` write | ❌ deferred | requires plaintiff-as-msg.sender — meta-tx relayer queued for v0.2 |
+| 🐚 Shell wallet flow between daemons | ⚠️ design-only | Each juror is registered with `per_call=5🐚` and the court with `per_call=20🐚`, so a successful case is *designed* to pay 20 → court → 5×3 → jurors with court netting +5 fee. **In our isolated 5-daemon loopback the wallet delta is not observed live** (balance stays at the 5000🐚 default and `anet svc audit` returns empty). The data path (HTTP body / verdict / Soul attribution) works end-to-end; the credit-gossip layer in this loopback config does not seem to settle. Likely either a per-call deposit setting we haven't surfaced or the `/anet/credits` topic gossip needing a non-loopback overlay. **Public-mesh test (`scripts/verify-public-mesh.sh`) confirmed `ans.published=True`** which is the documented prerequisite for billing to engage in production. v0.2 will instrument this. |
+
+### Economic model (designed)
+
+```
+caller pays court           : -20 🐚
+court pays each juror       : -5 🐚 ×3  = -15 🐚
+court net fee               :   +5 🐚
+each juror reward           :   +5 🐚 (×3 jurors)
+─────────────────────────────────────────
+sum (anet wallet)           :    0 🐚 ✓ conserved
+```
+
+Per anet's own pricing primitives (`per_call`, `per_kb`, `per_minute` declared
+at register time), every juror that participates in a case earns 5 🐚 by
+construction. The court keeps 5 🐚 per case as arbitration fee. The caller
+spends 20 🐚 total — never any EVM gas, never any USDC. See `scripts/verify-
+public-mesh.sh` for the registration-side proof and the table above for
+where reality currently differs from the design.
 
 Known v0.2 work (out of sponsor-track scope, parent project handles):
 - Real-Claude end-to-end synchronous: anet's 30s svc-call client timeout
