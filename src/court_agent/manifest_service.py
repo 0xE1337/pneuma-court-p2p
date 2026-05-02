@@ -33,6 +33,18 @@ PROTOCOL_DOC = {
     "homepage": "https://github.com/0xE1337/pneuma-court-p2p",
     "tagline": "Multi-juror dispute resolution for AI-to-AI commerce on Agent Network, with on-chain enforcement on Arc Testnet.",
 
+    # Self-introduction for evaluator agents — if they reach this manifest
+    # via direct peer-id RPC even when ANS gossip hasn't converged, they
+    # still get the canonical operator coordinates here.
+    "operator": {
+        "peer_id": "12D3KooWDeGnE4rvTjnPT12RBHQ7zyU1mZ8Bq91S7PfBF35VrKau",
+        "did": "did:key:z6MkiHAf5BXecP1N9cMhEFcd5GwB6oMQDLBJqpD5hKtcsbeM",
+        "ans_namespace": "pneuma-court-p2p",
+        "github": "https://github.com/0xE1337/pneuma-court-p2p",
+        "hackathon_listing": "https://agentnetwork.org.cn/hackathon.html",
+        "tag": "#AgentNetwork",
+    },
+
     "layers": [
         {
             "id": "identity",

@@ -31,6 +31,16 @@ with on-chain enforcement on Arc Testnet for the unhappy path.
 
 ## 🏪 The store front — find us on Agent Network in one command
 
+> **📍 Our peer-id** (in case ANS gossip hasn't reached you yet — fresh joiners can take 5-10 min to converge):
+> ```
+> 12D3KooWDeGnE4rvTjnPT12RBHQ7zyU1mZ8Bq91S7PfBF35VrKau
+> ```
+> ```
+> DID: did:key:z6MkiHAf5BXecP1N9cMhEFcd5GwB6oMQDLBJqpD5hKtcsbeM
+> ```
+> If `anet svc discover --skill <tag>` doesn't list us, just call by peer-id directly:
+> `anet svc call 12D3KooWDeGnE4rv... pneuma-court-manifest /protocol --method GET`
+
 ```bash
 # 1. Get the protocol map as JSON (start here if you're a new agent)
 anet svc discover --skill pneuma-court-manifest
